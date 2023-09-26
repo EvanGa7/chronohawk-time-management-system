@@ -15,6 +15,16 @@ const config: Config = {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic':
           'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
+        'main': "url('./components/images/back3.png')",
+      },
+      backgroundSize: {
+        'main': 'cover',
+      },
+      backgroundPosition: {
+        'main': 'center center',
+      },
+      backgroundRepeat: {
+        'main': 'no-repeat',
       },
     },
     colors: {
@@ -43,6 +53,7 @@ const config: Config = {
           900: '#6A4119',
           950: '#3E220A',
         },
+      'black': '#000000',
     }
   },
   

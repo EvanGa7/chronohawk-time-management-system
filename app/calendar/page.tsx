@@ -2,8 +2,9 @@
 import React, { useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
-import interactionPlugin from '@fullcalendar/interaction';
+import interactionPlugin from '@fullcalendar/interaction'; // needed for dayClick
 import timeGridPlugin from '@fullcalendar/timegrid';
+import Taskmenu from '../components/taskmenu';
 
 interface Task {
   title: string;
@@ -29,8 +30,9 @@ export default function Calendar() {
 
   return (
     <>
-      <main className="flex min-h-screen flex-col items-center p-24">
-        <div className="grid grid-cols-1 sm:grid-cols-2 h-full w-full text-buddha-950">
+    <div className="main-bg relative min-h-screen p-8 text-buddha-200">
+      <main className="flex min-h-screen flex-col items-center p-24 ">
+        <div className="grid grid-cols-1 sm:grid-cols-2 h-full w-full text-buddha-200">
           <div className="sm:col-span-2">
             <FullCalendar
               plugins={[dayGridPlugin, interactionPlugin, timeGridPlugin]}
@@ -40,7 +42,7 @@ export default function Calendar() {
                 right: 'dayGridMonth,dayGridWeek',
               }}
               events={tasks}
-              navIndicator={true}
+              nowIndicator={true}
               editable={true}
               selectMirror={true}
               selectable={true}
@@ -81,6 +83,15 @@ export default function Calendar() {
           </div>
         </div>
       )}
+
+      <Taskmenu
+        isAddingTask={isAddingTask}
+        setIsAddingTask={setIsAddingTask}
+        newTask={newTask}
+        setNewTask={setNewTask}
+        handleAddTask={handleAddTask}
+      />
+    </div>
     </>
   );
 }

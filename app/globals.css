@@ -16,7 +16,34 @@
   }
 }
 
-body {
-  /* color: rgb(var(--foreground-rgb)); */
-  text: black;
+/* .main-bg::after {
+  content: "";
+  display: block;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: url('./components/images/back3.png') center center / cover no-repeat;
+  opacity: 1; /* Adjust the opacity as needed 
+  z-index: -1;
+} */
+
+
+.main-bg::after {
+  content: "";
+  display: block;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: 
+    linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.5),  /* you can adjust opacity here */
+      rgba(0, 0, 0, 0.5)   /* you can adjust opacity here */
+    ), 
+    url('./components/images/back3.png') center center / cover no-repeat;
+  z-index: -1;
 }

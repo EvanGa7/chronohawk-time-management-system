@@ -1,11 +1,20 @@
 'use client'
 import React, { useState } from 'react';
+import { createClient } from '@supabase/supabase-js'
+import { useRouter } from 'next/navigation'; // Import useRouter hook
+
+const supabaseUrl: string = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey: string = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 const Login = () => {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{ email: string; password: string }>({
     email: '',
     password: '',
   });
+
+  const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -15,13 +24,21 @@ const Login = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Add your login logic here, including sending the form data to your authentication endpoint
+    const { error } = await supabase.auth.signInWithPassword({
+      email: formData.email,
+      password: formData.password,
+    });
+    if (!error) {
+      router.push('/account');
+    } else {
+      alert(error.message);
+    }
   };
-
+  
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+    <div className="main-bg relative min-h-screen flex items-center justify-center text-buddha-200">
       <div className="bg-white p-8 rounded shadow-md w-96">
         <h2 className="text-2xl font-semibold mb-4">Account Login</h2>
         <form onSubmit={handleSubmit}>
@@ -33,7 +50,7 @@ const Login = () => {
               type="email"
               id="email"
               name="email"
-              className="mt-1 p-2 w-full border rounded-md"
+              className="mt-1 p-2 w-full border border-buddha-950 rounded-md text-buddha-950"
               placeholder="Enter your email"
               value={formData.email}
               onChange={handleChange}
@@ -48,7 +65,7 @@ const Login = () => {
               type="password"
               id="password"
               name="password"
-              className="mt-1 p-2 w-full border rounded-md"
+              className="mt-1 p-2 w-full border border-buddha-950 rounded-md text-buddha-950"
               placeholder="Enter your password"
               value={formData.password}
               onChange={handleChange}
@@ -58,7 +75,7 @@ const Login = () => {
           <div className="flex justify-end">
             <button
               type="submit"
-              className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:outline-none focus:ring focus:ring-blue-200"
+              className="bg-buddha-500 text-buddha-950 py-2 px-4 rounded hover:bg-buddha-50 focus:outline-none focus:ring focus:ring-blue-200"
             >
               Login
             </button>

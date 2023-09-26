@@ -1,19 +1,19 @@
 'use client'
 import React from "react";
-
 import {Navbar, NavbarBrand, NavbarContent, NavbarItem, Link, Button} from "@nextui-org/react";
-import {AcmeLogo} from "./AcmeLogo.jsx";
+import ChronoLogo from "./logo";
+
 
 export default function App() {
   return (
     <Navbar shouldHideOnScroll className='bg-buddha-950'>
       <NavbarBrand>
-        <AcmeLogo />
-        <p className=" text-buddha-50">ChronoHawk</p>
+        <ChronoLogo />
+        <p className="text-buddha-200" style={{ fontSize: '25px', lineHeight: '14px', margin: '0', padding: '10px'}}>ChronoHawk</p>
       </NavbarBrand>
       <NavbarContent className="hidden sm:flex gap-4" justify="center">
         <NavbarItem>
-          <Link color="foreground" href="/" className='text-buddha-50'>
+          <Link color="foreground" href="/" className='text-buddha-200'>
             Home
           </Link>
         </NavbarItem>
@@ -23,7 +23,7 @@ export default function App() {
           </Link>
         </NavbarItem>
         <NavbarItem >
-          <Link color="foreground" href="/account" className='text-buddha-50'>
+          <Link color="foreground" href="/account" className='text-buddha-200'>
             Account
           </Link>
         </NavbarItem>
@@ -41,3 +41,4 @@ export default function App() {
     </Navbar>
   );
 }
+
