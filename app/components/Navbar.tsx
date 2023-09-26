@@ -27,6 +27,11 @@ export default function App() {
             Account
           </Link>
         </NavbarItem>
+        <NavbarItem >
+          <Link color="foreground" href="/account/new/freetime" className='text-buddha-200'>
+            FreeTime
+          </Link>
+        </NavbarItem>
       </NavbarContent>
       <NavbarContent justify="end">
         <NavbarItem className="hidden lg:flex">
