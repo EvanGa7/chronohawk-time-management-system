@@ -27,8 +27,6 @@ CREATE TABLE freeTime (
     userID INTEGER REFERENCES users(userID),
     dayOfFree SMALLINT NOT NULL,
     minutesAvailable INT NOT NULL,
-    sleepTime TIME NOT NULL,
-    timeZone VARCHAR(20) NOT NULL
 );
 
 -- Creating the recursion table
