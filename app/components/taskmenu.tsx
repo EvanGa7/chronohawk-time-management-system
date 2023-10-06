@@ -5,6 +5,7 @@ import {EditIcon} from "../components/EditIcon";
 import {DeleteIcon} from "../components/DeleteIcon";
 import {EyeIcon} from "../components/EyeIcon";
 import {columns, tasks} from "./data";
+import {Button} from "../components/Button"
 
 const statusColorMap: Record<string, ChipProps["color"]> = {
   active: "success",
@@ -68,21 +69,24 @@ export default function App() {
   }, []);
 
   return (
-    <Table className="text-buddha-950"aria-label="Example table with custom cells">
-      <TableHeader columns={columns}>
-        {(column) => (
-          <TableColumn key={column.uid} align={column.uid === "actions" ? "center" : "start"}>
-            {column.name}
-          </TableColumn>
-        )}
-      </TableHeader>
-      <TableBody items={tasks}>
-        {(item) => (
-          <TableRow key={item.id}>
-            {(columnKey) => <TableCell>{renderCell(item, columnKey)}</TableCell>}
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
+    <div>
+      <Table className="text-buddha-950" aria-label="Example table with custom cells">
+        <TableHeader columns={columns}>
+          {(column) => (
+            <TableColumn key={column.uid} align={column.uid === "actions" ? "center" : "start"}>
+              {column.name}
+            </TableColumn>
+          )}
+        </TableHeader>
+        <TableBody items={tasks}>
+          {(item) => (
+            <TableRow key={item.id}>
+              {(columnKey) => <TableCell>{renderCell(item, columnKey)}</TableCell>}
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+      <Button />
+    </div>
   );
 }

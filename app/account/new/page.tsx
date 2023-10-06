@@ -147,11 +147,3 @@ const NewAccount = () => {
 };
 
 export default NewAccount;
-
-function insertUser(formData: { firstname: string; lastname: string; phone: string; email: string; password: string; }) {
-  throw new Error('Function not implemented.');
-}
-function from(arg0: string) {
-  throw new Error('Function not implemented.');
-}
-
