@@ -34,17 +34,10 @@ const FreeTimeEntry: React.FC = () => {
 useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const session = await supabase.auth.getSession();  // Add 'await' here
-        console.log('Session:', session);
-
-        if (!session) {
-          throw new Error('No active session found.');
-        }
-
         const user = await supabase.auth.getUser();
         
         if (!user || !user.data || !user.data.user || !user.data.user.id) {
-            throw new Error('Failed to retrieve user or user ID.');
+            throw new Error('A user is not logged in!');
         }
 
         setUserId(user.data.user.id);
