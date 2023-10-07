@@ -31,6 +31,7 @@ const FreeTimeEntry: React.FC = () => {
     Sunday: { minutesavailable: 0 },
   });
 
+//check if signed in
 useEffect(() => {
     const fetchUserData = async () => {
       try {
