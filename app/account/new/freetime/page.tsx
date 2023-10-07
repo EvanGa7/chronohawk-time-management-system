@@ -61,6 +61,7 @@ useEffect(() => {
     }));
   };
 
+  //function for submitting the frretime info to the database
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
