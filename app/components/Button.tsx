@@ -11,7 +11,7 @@ export function Button() {
 
     return (
         <div className="flex flex-wrap gap-4 items-center">
-            <NextUIButton color="primary" variant="shadow" onClick={handleClick}>
+            <NextUIButton className='bg-buddha-500' variant="flat" onClick={handleClick}>
                 Add Task
             </NextUIButton>  
         </div>

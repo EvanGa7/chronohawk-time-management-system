@@ -1,10 +1,17 @@
 'use client'
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction'; // needed for dayClick
 import timeGridPlugin from '@fullcalendar/timegrid';
 import Taskmenu from '../components/taskmenu';
+import { useRouter } from 'next/navigation'; // Import useRouter hook
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl: string = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey: string = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface Task {
   title: string;
@@ -13,13 +20,36 @@ interface Task {
 }
 
 export default function Calendar() {
+  const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
   const [isAddingTask, setIsAddingTask] = useState(false); 
   const [newTask, setNewTask] = useState<Task>({
     title: '',
     start: new Date(),
     end: new Date(),
   });
+
+  //check if signed in
+useEffect(() => {
+  const fetchUserData = async () => {
+    try {
+      const user = await supabase.auth.getUser();
+      
+      if (!user || !user.data || !user.data.user || !user.data.user.id) {
+          throw new Error('A user is not logged in!');
+      }
+
+      setUserId(user.data.user.id);
+
+    } catch (error) {
+      alert(error.message);
+      router.push('/account');
+    }
+  };
+
+  fetchUserData();
+}, []);
 
   // Function to handle adding a new task
   const handleAddTask = () => {
@@ -53,36 +83,6 @@ export default function Calendar() {
           </div>
         </div>
       </main>
-
-      {/* Task management section */}
-      <section className="p-4">
-        {/* Task input form */}
-        <div>
-          <h2>Add Task</h2>
-          {/* Task input fields (title, start, end, etc.) */}
-          {/* Implement your form fields here */}
-          <button onClick={handleAddTask}>Add Task</button>
-        </div>
-
-        {/* Rest of your task management section */}
-      </section>
-
-      {isAddingTask && (
-        <div className="modal">
-          <div className="modal-content">
-            <h2>Add Task</h2>
-            <input
-              type="text"
-              placeholder="Task Title"
-              value={newTask.title}
-              onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-            />
-            {/* Add other task-related input fields here */}
-            <button onClick={handleAddTask}>Add Task</button>
-            <button onClick={() => setIsAddingTask(false)}>Cancel</button>
-          </div>
-        </div>
-      )}
 
       <Taskmenu
         isAddingTask={isAddingTask}
