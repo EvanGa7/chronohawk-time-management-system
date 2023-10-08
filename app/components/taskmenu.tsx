@@ -1,11 +1,28 @@
-import React from "react";
-
-import {Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, User, Chip, Tooltip, ChipProps, getKeyValue} from "@nextui-org/react";
+import React, { useState, useEffect } from "react";
+import {Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, User, Chip, Tooltip, ChipProps, getKeyValue, user} from "@nextui-org/react";
 import {EditIcon} from "../components/EditIcon";
 import {DeleteIcon} from "../components/DeleteIcon";
 import {EyeIcon} from "../components/EyeIcon";
-import {columns, tasks} from "./data";
 import {Button} from "../components/Button"
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl: string = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey: string = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+const columns = [
+  {name: "TASKID", uid: "tid"},
+  {name: "USERID", uid: "uid"},
+  {name: "TASKNAME", uid: "name"},
+  {name: "TASKTYPE", uid: "type"},
+  {name: "DUEDATE", uid: "due"},
+  {name: "ESTIMATEDTIME", uid: "etime"},
+  {name: "TIMELEFT", uid: "tleft"},
+  {name: "PRIORITY", uid: "priority"},
+  {name: "STATUS", uid: "status"},
+  {name: "RECURSION", uid: "recursion"},
+  {name: "ACTIONS", uid: "actions"},
+];
 
 const statusColorMap: Record<string, ChipProps["color"]> = {
   active: "success",
@@ -13,9 +30,58 @@ const statusColorMap: Record<string, ChipProps["color"]> = {
   vacation: "warning",
 };
 
-type Task = typeof tasks[0];
+export const useTasks = (userId) => {
+  const [tasks, setTasks] = useState([]);
+  const [error, setError] = useState(null);
 
-export default function App() {
+  const fetchTasks = async () => {
+      try {
+          const { data, error } = await supabase
+              .from('tasks')
+              .select('*')
+              .eq('userid', userId); // Filter tasks based on the user's ID
+
+          console.log(data, error);
+
+          if (error) throw error;
+
+          // Set tasks here
+          setTasks(data);
+
+          console.log(tasks);
+      } catch (error) {
+          setError(error.message);
+      }
+  };
+
+  useEffect(() => {
+      if (userId) {
+          fetchTasks();
+      }
+  }, [userId]);
+
+  return { tasks, error };
+};
+
+type Task = typeof useTasks extends () => { tasks: infer T } ? T[number] : never;
+
+export default function taskMenu() {
+  const [userId, setUserId] = useState(null);
+  const { tasks, error } = useTasks(userId);
+
+  useEffect(() => {
+      const retrieveUser = async () => {
+          const session = await supabase.auth.getSession();
+          if (session && session.data.session) {
+              const userId = session.data.session.user?.id;
+              setUserId(userId);
+          }
+      }
+      retrieveUser();
+  }, []);
+
+  if (error) return <div>Error: {error}</div>;
+
   const renderCell = React.useCallback((task: Task, columnKey: React.Key) => {
     const cellValue = getKeyValue<Task, string | number>(task, columnKey as keyof Task);
 
@@ -80,11 +146,11 @@ export default function App() {
         </TableHeader>
         <TableBody items={tasks}>
           {(item) => (
-            <TableRow key={item.id}>
-              {(columnKey) => <TableCell>{renderCell(item, columnKey)}</TableCell>}
-            </TableRow>
+              <TableRow key={item.taskid}>
+                  {(columnKey) => <TableCell>{renderCell(item, columnKey)}</TableCell>}
+              </TableRow>
           )}
-        </TableBody>
+      </TableBody>
       </Table>
       <Button />
     </div>

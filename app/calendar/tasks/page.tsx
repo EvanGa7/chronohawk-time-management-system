@@ -21,7 +21,7 @@ const NewTask = () => {
     priorityof: '0',
     statusof: 'Inactive',
     numdays: '',
-    recursivetype: 'false',
+    recursion: false,
     frequencycycle: '',
     repetitioncycle: '',
     cyclestartdate: '',
@@ -31,7 +31,7 @@ const NewTask = () => {
 
   const handleCheckboxChange = () => {
     setIsRecursive(!isRecursive);
-    setFormData({ ...formData, recursivetype: 'true'});
+    setFormData({ ...formData, recursion: true});
   };
 
   const handleChange = (e) => {
@@ -57,6 +57,7 @@ const NewTask = () => {
           priorityof: formData.priorityof,
           statusof: formData.statusof,
           numdays: formData.numdays,
+          recursion: formData.recursion,
         }]);
     } else {
       alert('Error inserting task data: ' + Error.prototype.message);
@@ -68,7 +69,14 @@ const NewTask = () => {
     .from('tasks')
     .select('taskid')
     .eq('taskname', formData.taskname)
+    .eq('tasktype', formData.tasktype)
     .eq('duedate', formData.duedate)
+    .eq('estimatedtime', formData.estimatedtime)
+    .eq('timeleft', formData.estimatedtime)
+    .eq('priorityof', formData.priorityof)
+    .eq('statusof', formData.statusof)
+    .eq('numdays', formData.numdays)
+    .eq('recursion', formData.recursion)
     .single();
 
     if (retrieveError) {
@@ -84,7 +92,6 @@ const NewTask = () => {
         .from('recursion')
         .insert([{
           taskid: taskid,
-          recursivetype: formData.recursivetype,
           frequencycycle: formData.frequencycycle,
           repetitioncycle: formData.repetitioncycle,
           cyclestartdate: formData.cyclestartdate,
@@ -94,13 +101,6 @@ const NewTask = () => {
         alert('Error inserting recursion data: ' + recursionError.message);
         return; // Exit early if there's an error
       }
-    } else {
-      const { error: recursionError } = await supabase
-        .from('recursion')
-        .insert([{
-          taskid: taskid, // Use the task id from the inserted task
-          recursivetype: formData.recursivetype,
-        }])
     }
   
     alert('Task Created Successfully!');
