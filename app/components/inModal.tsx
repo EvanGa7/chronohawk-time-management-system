@@ -223,7 +223,7 @@ export function inModel({ isOpen, onClose, selectedDate}) {
                 <Button color="danger" variant="flat" onPress={onClose}>
                     Close
                 </Button>
-                <Button color="primary" onPress={handleSubmit}>
+                <Button className="bg-buddha-500 text-buddha-950" onPress={handleSubmit}>
                     Add
                 </Button>
                 </ModalFooter>

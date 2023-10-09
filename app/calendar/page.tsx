@@ -8,6 +8,7 @@ import Taskmenu from '../components/taskmenu';
 import { useRouter } from 'next/navigation'; // Import useRouter hook
 import { createClient } from '@supabase/supabase-js';
 import InModal from '../components/inModal';
+import TaskModal from '../components/taskModal';
 
 const supabaseUrl: string = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey: string = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -24,8 +25,13 @@ export default function Calendar() {
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
+
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+
 
 
   //check if signed in
@@ -63,6 +69,8 @@ export default function Calendar() {
           title: task.taskname,
           start: task.duedate, // Assuming duedate is the start date
           end: task.duedate,   // Assuming duedate is the end date
+          eventHeight: 30,
+          taskid: task.taskid  // Include the taskid as a custom property
         }));
 
         setTasks(formattedTasks);
@@ -79,7 +87,23 @@ export default function Calendar() {
   const handleDateSelect = (selectInfo) => {
     setSelectedDate(selectInfo.start);
     setIsModalOpen(true);
-  };  
+  };
+
+  function renderEventContent(eventInfo) {
+    const { event } = eventInfo;
+    const height = event.extendedProps.eventHeight || 'auto'; // Use the custom property
+  
+    return (
+      <div style={{ height: `${height}px`, overflow: 'hidden' }}>
+        {event.title}
+      </div>
+    );
+  }
+
+  const handleEventClick = (clickInfo) => {
+    setSelectedTask(clickInfo.event.extendedProps.taskid);
+    setIsTaskModalOpen(true);
+  };
 
   return (
     <>
@@ -95,17 +119,23 @@ export default function Calendar() {
                 right: 'dayGridMonth,dayGridWeek',
               }}
               events={tasks}
-              eventColor = '#F6EC92'
+              eventColor = '#EAC725'
               eventTextColor = '#1F2937'
+              eventContent={renderEventContent}
+              eventClick={handleEventClick}
               initialView="dayGridMonth"
               nowIndicator={true}
               selectable={true}
-              selectMirror={true}
               dayMaxEvents={true}
               weekends={true}
               select={handleDateSelect}
             />
           </div>
+          <TaskModal 
+            isOpen={isTaskModalOpen} 
+            onClose={() => setIsTaskModalOpen(false)} 
+            selectedTask={selectedTask}
+          />
           <InModal 
             isOpen={isModalOpen} 
             onClose={() => setIsModalOpen(false)} 
