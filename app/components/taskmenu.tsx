@@ -11,18 +11,20 @@ const supabaseAnonKey: string = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 const columns = [
-  {name: "TASKID", uid: "tid"},
-  {name: "USERID", uid: "uid"},
-  {name: "TASKNAME", uid: "name"},
-  {name: "TASKTYPE", uid: "type"},
-  {name: "DUEDATE", uid: "due"},
-  {name: "ESTIMATEDTIME", uid: "etime"},
-  {name: "TIMELEFT", uid: "tleft"},
-  {name: "PRIORITY", uid: "priority"},
-  {name: "STATUS", uid: "status"},
+  {name: "TASKID", uid: "taskid"},
+  {name: "USERID", uid: "userid"},
+  {name: "TASKNAME", uid: "taskname"},
+  {name: "TASKTYPE", uid: "tasktype"},
+  {name: "DUEDATE", uid: "duedate"},
+  {name: "ESTIMATEDTIME", uid: "estimatedtime"},
+  {name: "TIMELEFT", uid: "timeleft"},
+  {name: "PRIORITY", uid: "priorityof"},
+  {name: "STATUS", uid: "statusof"},
+  {name: "NUMDAYS", uid: "numdays"},
   {name: "RECURSION", uid: "recursion"},
   {name: "ACTIONS", uid: "actions"},
 ];
+
 
 const statusColorMap: Record<string, ChipProps["color"]> = {
   active: "success",
@@ -32,7 +34,7 @@ const statusColorMap: Record<string, ChipProps["color"]> = {
 
 type Task = {
   taskid: number;
-  userid: string;
+  userid: string | null;
   taskname: string;
   tasktype: string;
   duedate: Date;
@@ -40,6 +42,7 @@ type Task = {
   timeleft: number;
   priorityof: number;
   statusof: string;
+  numdays: number | null;
   recursion: boolean;
 };
 
@@ -69,8 +72,6 @@ export default function taskMenu() {
                   .from('tasks')
                   .select('*')
                   .eq('userid', userId);
-              
-                  console.log(data);
 
               if (error) throw error;
 
@@ -84,13 +85,12 @@ export default function taskMenu() {
                 timeleft: task.timeleft,
                 priorityof: task.priorityof,
                 statusof: task.statusof,
+                numdays: task.numdays,
                 recursion: task.recursion,
               }));
 
               tasksRef.current = tasksArray;
               forceUpdate({});  // Force a re-render
-
-              console.log(tasksRef.current);
 
           } catch (error) {
               setError(error.message);
@@ -103,7 +103,7 @@ export default function taskMenu() {
   if (error) return <div>Error: {error}</div>;
 
   const renderCell = React.useCallback((task: Task, columnKey: React.Key) => {
-    const cellValue = getKeyValue<Task, string | number>(task, columnKey as keyof Task);
+    const cellValue = getKeyValue<Task, string | number | boolean>(task, columnKey as keyof Task);
 
     switch (columnKey) {
       case "name":
@@ -149,11 +149,14 @@ export default function taskMenu() {
             </Tooltip>
           </div>
         );
+      case "recursion":
+        return cellValue ? "True" : "False";
       default:
-        return cellValue;
+        return String(cellValue);
     }
-  }, []);
+}, []);
 
+  
   return (
     <div>
       <Table className="text-buddha-950" aria-label="Example table with custom cells">
@@ -172,6 +175,7 @@ export default function taskMenu() {
           )}
       </TableBody>
       </Table>
+      <br />
       <Button />
     </div>
   );

@@ -7,6 +7,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import Taskmenu from '../components/taskmenu';
 import { useRouter } from 'next/navigation'; // Import useRouter hook
 import { createClient } from '@supabase/supabase-js';
+import InModal from '../components/inModal';
 
 const supabaseUrl: string = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey: string = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -23,40 +24,62 @@ export default function Calendar() {
   const router = useRouter();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
-  const [isAddingTask, setIsAddingTask] = useState(false); 
-  const [newTask, setNewTask] = useState<Task>({
-    title: '',
-    start: new Date(),
-    end: new Date(),
-  });
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null);
+
 
   //check if signed in
-useEffect(() => {
-  const fetchUserData = async () => {
-    try {
-      const user = await supabase.auth.getUser();
-      
-      if (!user || !user.data || !user.data.user || !user.data.user.id) {
-          throw new Error('A user is not logged in!');
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const user = await supabase.auth.getUser();
+        
+        if (!user || !user.data || !user.data.user || !user.data.user.id) {
+            throw new Error('A user is not logged in!');
+        }
+
+        setUserId(user.data.user.id);
+
+      } catch (error) {
+        alert(error.message);
+        router.push('/account');
       }
+    };
 
-      setUserId(user.data.user.id);
+    fetchUserData();
+  }, []);
 
-    } catch (error) {
-      alert(error.message);
-      router.push('/account');
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('userid', userId);
+
+        if (error) throw error;
+
+        const formattedTasks = data.map(task => ({
+          title: task.taskname,
+          start: task.duedate, // Assuming duedate is the start date
+          end: task.duedate,   // Assuming duedate is the end date
+        }));
+
+        setTasks(formattedTasks);
+      } catch (error) {
+        console.error("Error fetching tasks:", error.message);
+      }
+    };
+
+    if (userId) {
+      fetchTasks();
     }
-  };
+  }, [userId]);
 
-  fetchUserData();
-}, []);
-
-  // Function to handle adding a new task
-  const handleAddTask = () => {
-    // Add the new task to the tasks array
-    setTasks([...tasks, newTask]);
-    setIsAddingTask(false);
-  };
+  const handleDateSelect = (selectInfo) => {
+    setSelectedDate(selectInfo.start);
+    setIsModalOpen(true);
+  };  
 
   return (
     <>
@@ -72,25 +95,25 @@ useEffect(() => {
                 right: 'dayGridMonth,dayGridWeek',
               }}
               events={tasks}
+              eventColor = '#F6EC92'
+              eventTextColor = '#1F2937'
+              initialView="dayGridMonth"
               nowIndicator={true}
-              editable={true}
-              selectMirror={true}
               selectable={true}
-              // dateClick={handleNewTaskClick} // Update the function name
-              // eventClick={handleTaskClick} // Update the function name
-              // eventDrop={handleTaskDrop} // Update the function name
+              selectMirror={true}
+              dayMaxEvents={true}
+              weekends={true}
+              select={handleDateSelect}
             />
           </div>
+          <InModal 
+            isOpen={isModalOpen} 
+            onClose={() => setIsModalOpen(false)} 
+            selectedDate={selectedDate}
+          />
         </div>
       </main>
-
-      <Taskmenu
-        isAddingTask={isAddingTask}
-        setIsAddingTask={setIsAddingTask}
-        newTask={newTask}
-        setNewTask={setNewTask}
-        handleAddTask={handleAddTask}
-      />
+      <Taskmenu />
     </div>
     </>
   );
