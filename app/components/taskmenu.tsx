@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, User, Chip, Tooltip, ChipProps, getKeyValue, user} from "@nextui-org/react";
 import {EditIcon} from "../components/EditIcon";
 import {DeleteIcon} from "../components/DeleteIcon";
@@ -30,44 +30,24 @@ const statusColorMap: Record<string, ChipProps["color"]> = {
   vacation: "warning",
 };
 
-export const useTasks = (userId) => {
-  const [tasks, setTasks] = useState([]);
-  const [error, setError] = useState(null);
-
-  const fetchTasks = async () => {
-      try {
-          const { data, error } = await supabase
-              .from('tasks')
-              .select('*')
-              .eq('userid', userId); // Filter tasks based on the user's ID
-
-          console.log(data, error);
-
-          if (error) throw error;
-
-          // Set tasks here
-          setTasks(data);
-
-          console.log(tasks);
-      } catch (error) {
-          setError(error.message);
-      }
-  };
-
-  useEffect(() => {
-      if (userId) {
-          fetchTasks();
-      }
-  }, [userId]);
-
-  return { tasks, error };
+type Task = {
+  taskid: number;
+  userid: string;
+  taskname: string;
+  tasktype: string;
+  duedate: Date;
+  estimatedtime: number;
+  timeleft: number;
+  priorityof: number;
+  statusof: string;
+  recursion: boolean;
 };
 
-type Task = typeof useTasks extends () => { tasks: infer T } ? T[number] : never;
-
 export default function taskMenu() {
+  const [error, setError] = useState(null);
   const [userId, setUserId] = useState(null);
-  const { tasks, error } = useTasks(userId);
+  const tasksRef = useRef<Task[]>([]);
+  const [, forceUpdate] = useState({});
 
   useEffect(() => {
       const retrieveUser = async () => {
@@ -79,6 +59,46 @@ export default function taskMenu() {
       }
       retrieveUser();
   }, []);
+
+  useEffect(() => {
+      const fetchTasks = async () => {
+          if (!userId) return; // Don't fetch if userId is not set
+
+          try {
+              const { data, error } = await supabase
+                  .from('tasks')
+                  .select('*')
+                  .eq('userid', userId);
+              
+                  console.log(data);
+
+              if (error) throw error;
+
+              const tasksArray = data.map(task => ({
+                taskid: task.taskid,
+                userid: task.userid,
+                taskname: task.taskname,
+                tasktype: task.tasktype,
+                duedate: task.duedate,
+                estimatedtime: task.estimatedtime,
+                timeleft: task.timeleft,
+                priorityof: task.priorityof,
+                statusof: task.statusof,
+                recursion: task.recursion,
+              }));
+
+              tasksRef.current = tasksArray;
+              forceUpdate({});  // Force a re-render
+
+              console.log(tasksRef.current);
+
+          } catch (error) {
+              setError(error.message);
+          }
+      };
+
+      fetchTasks();
+  }, [userId]);
 
   if (error) return <div>Error: {error}</div>;
 
@@ -144,7 +164,7 @@ export default function taskMenu() {
             </TableColumn>
           )}
         </TableHeader>
-        <TableBody items={tasks}>
+        <TableBody items={tasksRef.current}>
           {(item) => (
               <TableRow key={item.taskid}>
                   {(columnKey) => <TableCell>{renderCell(item, columnKey)}</TableCell>}
