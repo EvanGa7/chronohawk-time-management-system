@@ -86,6 +86,8 @@ useEffect(() => {
   
   return (
     <div className='main-bg relative min-h-screen text-buddha-200'>
+      <br/>
+      <h2 className="text-3xl font-bold text-center ">Enter Your Free Time During The Week</h2>
       <form onSubmit={handleSubmit} className="p-8 rounded shadow-md w-96 mx-auto">
         {Object.keys(dayMap).map((day) => (
           <div key={day} className="mb-4">

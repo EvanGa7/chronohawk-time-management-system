@@ -32,8 +32,6 @@ export default function Calendar() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
 
-
-
   //check if signed in
   useEffect(() => {
     const fetchUserData = async () => {
@@ -133,8 +131,9 @@ export default function Calendar() {
           </div>
           <TaskModal 
             isOpen={isTaskModalOpen} 
-            onClose={() => setIsTaskModalOpen(false)} 
-            selectedTask={selectedTask}
+              onClose={() => setIsTaskModalOpen(false)} 
+              selectedTask={selectedTask}
+              modalMode="view"
           />
           <InModal 
             isOpen={isModalOpen} 

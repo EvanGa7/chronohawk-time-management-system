@@ -10,7 +10,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 const AccountPage = () => {
   const router = useRouter(); // Call the useRouter hook
-
+  
   const [user, setUser] = useState({
     userid: '',
     firstname: '',
@@ -28,7 +28,6 @@ const AccountPage = () => {
         .eq('userid', session.user.id) // Add this line to filter by userid
         .single(); // Add this line to return a single object instead of an array
       if (error) {
-        alert('Error fetching additional user data: ' + error.message);
         return;
       }
       if (data) {

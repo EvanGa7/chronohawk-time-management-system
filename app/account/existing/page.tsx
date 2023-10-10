@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'; // Import useRouter hook
 
@@ -9,12 +9,29 @@ const supabaseAnonKey: string = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 const Login = () => {
+  const router = useRouter();
+
+  // check if signed in and if so redirecting to the account page otherwise staying on the login page
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const user = await supabase.auth.getUser();
+        
+        if (user && user.data && user.data.user && user.data.user.id) {
+            router.push('/account');
+        }
+      } catch (error) {
+        alert(error.message);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
   const [formData, setFormData] = useState<{ email: string; password: string }>({
     email: '',
     password: '',
   });
-
-  const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
