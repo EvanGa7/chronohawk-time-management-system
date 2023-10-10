@@ -22,7 +22,7 @@ export function taskModal({ isOpen, onClose, selectedTask }) {
     recursion: false,
     frequencycycle: '',
     repetitioncycle: '',
-    cyclestartdate: Date,
+    cyclestartdate: '',
   });
 
   useEffect(() => {
@@ -77,6 +77,58 @@ export function taskModal({ isOpen, onClose, selectedTask }) {
     setIsEditMode(!isEditMode);
   };
 
+  const handleInputChange = (field, value) => {
+    setFormData(prevData => ({
+      ...prevData,
+      [field]: value
+    }));
+  };
+
+  const saveEditedTask = async () => {
+    const { error } = await supabase
+      .from('tasks')
+      .update({
+        taskname: formData.taskname,
+        tasktype: formData.tasktype,
+        duedate: formData.duedate,
+        estimatedtime: formData.estimatedtime,
+        priorityof: formData.priorityof,
+        statusof: formData.statusof,
+        numdays: formData.numdays,
+        recursion: formData.recursion
+      })
+      .eq('taskid', selectedTask);
+  
+    if (error) {
+      alert('Error updating task: ' + error.message);
+      return;
+    }
+  
+    // If there's recursion data, update that as well
+    if (isRecursive) {
+      const { error: recursionError } = await supabase
+        .from('recursion')
+        .update({
+          frequencycycle: formData.frequencycycle,
+          repetitioncycle: formData.repetitioncycle,
+          cyclestartdate: formData.cyclestartdate
+        })
+        .eq('taskid', selectedTask);
+  
+      if (recursionError) {
+        alert('Error updating recursion data: ' + recursionError.message);
+        return;
+      }
+    }
+  
+    // Close the modal and refresh the data (or however you want to handle it)
+    onClose();
+    window.location.reload();
+    // Optionally, you can fetch the tasks again or use any other method to refresh the data
+  };
+  
+  
+
   return (
     <>
       {isOpen && (
@@ -87,12 +139,60 @@ export function taskModal({ isOpen, onClose, selectedTask }) {
         >
           <ModalContent>
             <>
-              <ModalHeader className="flex flex-col gap-1">View Task</ModalHeader>
+              <ModalHeader className="flex flex-col gap-1 text-buddha-950">View Task</ModalHeader>
               <ModalBody>
                 {isEditMode ? (
-                  // Edit Mode
                   <>
-                    {/* Your input fields for editing go here */}
+                    <h2 className="text-center text-lg font-bold mb-4">Edit Task</h2>
+                    <label>Task Name:</label>
+                    <input className="border p-2 rounded w-full" type="text" value={formData.taskname} onChange={e => handleInputChange('taskname', e.target.value)} />
+                    <label>Task Type:</label>
+                    <input className="border p-2 rounded w-full" type="text" value={formData.tasktype} onChange={e => handleInputChange('tasktype', e.target.value)} />
+                    <label>Due Date:</label>
+                    <input className="border p-2 rounded w-full" type="date" value={formData.duedate} onChange={e => handleInputChange('duedate', e.target.value)} />
+                    <label>Estimated Time:</label>
+                    <input className="border p-2 rounded w-full" type="number" value={formData.estimatedtime} onChange={e => handleInputChange('estimatedtime', e.target.value)} />
+                    <label>Priority:</label>
+                    <input className="border p-2 rounded w-full" type="number" value={formData.priorityof} onChange={e => handleInputChange('priorityof', e.target.value)} />
+                    <label>Status:</label>
+                    <input className="border p-2 rounded w-full" type="text" value={formData.statusof} onChange={e => handleInputChange('statusof', e.target.value)} />
+                    <label>Number of Days:</label>
+                    <input className="border p-2 rounded w-full" type="number" value={formData.numdays} onChange={e => handleInputChange('numdays', e.target.value)} />
+                    <label>Recursion:</label>
+                    <input className="border p-2 rounded w-full" type="boolean" value={formData.recursion} onChange={e => handleInputChange('recursion', e.target.value)} />
+                    {isRecursive && (
+                    <>
+                        <label className="block mt-4">
+                        <span className="text-gray-700">Frequency Cycle:</span>
+                        <input 
+                            className="border p-2 rounded w-full"
+                            type="text" 
+                            value={formData.frequencycycle} 
+                            onChange={e => handleInputChange('frequencycycle', e.target.value)} 
+                        />
+                        </label>
+
+                        <label className="block mt-4">
+                        <span className="text-gray-700">Repetition Cycle:</span>
+                        <input 
+                            className="border p-2 rounded w-full"
+                            type="text" 
+                            value={formData.repetitioncycle} 
+                            onChange={e => handleInputChange('repetitioncycle', e.target.value)} 
+                        />
+                        </label>
+
+                        <label className="block mt-4">
+                        <span className="text-gray-700">Cycle Start Date:</span>
+                        <input 
+                            className="border p-2 rounded w-full"
+                            type="date" 
+                            value={formData.cyclestartdate} 
+                            onChange={e => handleInputChange('cyclestartdate', e.target.value)} 
+                        />
+                        </label>
+                    </>
+                    )}
                   </>
                 ) : (
                   // View Mode
@@ -119,8 +219,8 @@ export function taskModal({ isOpen, onClose, selectedTask }) {
                 <Button color="danger" variant="flat" onPress={onClose}>
                   Close
                 </Button>
-                <Button className="bg-buddha-500 text-buddha-950" onPress={toggleEditMode}>
-                  {isEditMode ? 'Save' : 'Edit'}
+                <Button className="bg-buddha-500 text-buddha-950" onPress={isEditMode ? saveEditedTask : toggleEditMode}>
+                    {isEditMode ? 'Save' : 'Edit'}
                 </Button>
               </ModalFooter>
             </>
