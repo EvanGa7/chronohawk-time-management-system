@@ -37,7 +37,7 @@ type Task = {
   taskid: number;
   userid: string | null;
   taskname: string;
-  tasktype: string;
+  tasktype: number;
   duedate: Date;
   estimatedtime: number;
   timeleft: number;

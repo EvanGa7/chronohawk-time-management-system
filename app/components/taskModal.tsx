@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button } from "@nextui-org/react";
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Checkbox} from "@nextui-org/react";
 import { createClient } from '@supabase/supabase-js';
+import {Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Button} from "@nextui-org/react";
 
 const supabaseUrl: string = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey: string = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -160,6 +161,30 @@ export function taskModal({ isOpen, onClose, selectedTask, modalMode: initialMod
     }
   };
 
+  const [selectedTaskType, setSelectedTaskType] = useState<string | null>(null);
+  
+  const handleTaskTypeChange = (selectedType: string) => {
+    setSelectedTaskType(selectedType);
+    let typeValue;
+    switch (selectedType) {
+        case 'Test':
+            typeValue = 1;
+            break;
+        case 'Quiz':
+            typeValue = 2;
+            break;
+        case 'Assignment':
+            typeValue = 3;
+            break;
+        case 'Project':
+            typeValue = 4;
+            break;
+        default:
+            typeValue = null;
+    }
+    setFormData(prevData => ({ ...prevData, tasktype: typeValue }));
+};
+
   return (
     <>
       {isOpen && (
@@ -205,8 +230,22 @@ export function taskModal({ isOpen, onClose, selectedTask, modalMode: initialMod
                         <input className="border p-2 rounded w-full" type="text" value={formData.taskname} onChange={e => handleInputChange('taskname', e.target.value)} />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Task Type:</label>
-                        <input className="border p-2 rounded w-full" type="text" value={formData.tasktype} onChange={e => handleInputChange('tasktype', e.target.value)} />
+                      <label className="block text-sm font-medium text-buddha-950">
+                          Task Type
+                      </label>
+                      <Dropdown>
+                          <DropdownTrigger>
+                              <Button variant="flat" className='bg-buddha-500 text-buddha-950'>
+                                {selectedTaskType ? selectedTaskType : 'Select Task Type'}
+                              </Button>
+                          </DropdownTrigger>
+                          <DropdownMenu aria-label="Task Types">
+                            <DropdownItem key="type1" onClick={() => handleTaskTypeChange('Test')}>Test</DropdownItem>
+                            <DropdownItem key="type2" onClick={() => handleTaskTypeChange('Quiz')}>Quiz</DropdownItem>
+                            <DropdownItem key="type3" onClick={() => handleTaskTypeChange('Assignment')}>Assignment</DropdownItem>
+                            <DropdownItem key="type4" onClick={() => handleTaskTypeChange('Project')}>Project</DropdownItem>
+                        </DropdownMenu>
+                      </Dropdown>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Due Date:</label>
@@ -228,9 +267,14 @@ export function taskModal({ isOpen, onClose, selectedTask, modalMode: initialMod
                         <label className="block text-sm font-medium text-gray-700 mb-1">Number of Days:</label>
                         <input className="border p-2 rounded w-full" type="number" value={formData.numdays} onChange={e => handleInputChange('numdays', e.target.value)} />
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Recursion:</label>
-                        <input className="border p-2 rounded w-full" type="boolean" value={formData.recursion} onChange={e => handleInputChange('recursion', e.target.value)} />
+                    <div className="mb-4">
+                      <label htmlFor="recursion" className="block text-sm font-medium text-buddha-950">
+                        Task Recursion
+                      </label>
+                      <Checkbox
+                        id="recursion"
+                        checked={isRecursive}
+                        onChange={e => setIsRecursive(e.target.checked)}/>
                     </div>
                     {isRecursive && (
                     <>

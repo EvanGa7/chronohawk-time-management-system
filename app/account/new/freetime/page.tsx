@@ -81,6 +81,7 @@ useEffect(() => {
       alert(error.message);
     } else {
       alert('Free time entries added successfully');
+      router.push('/calendar');
     }
   };
   

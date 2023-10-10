@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, useDisclosure, Input } from "@nextui-org/react";
 import { createClient } from '@supabase/supabase-js';
 import {Checkbox} from "@nextui-org/react";
+import {Dropdown, DropdownTrigger, DropdownMenu, DropdownItem} from "@nextui-org/react";
 
 const supabaseUrl: string = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey: string = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -108,6 +109,30 @@ export function inModel({ isOpen, onClose, selectedDate}) {
     window.location.reload();
 }
 
+const [selectedTaskType, setSelectedTaskType] = useState<string | null>(null);
+  
+const handleTaskTypeChange = (selectedType: string) => {
+  setSelectedTaskType(selectedType);
+  let typeValue;
+  switch (selectedType) {
+      case 'Test':
+          typeValue = 1;
+          break;
+      case 'Quiz':
+          typeValue = 2;
+          break;
+      case 'Assignment':
+          typeValue = 3;
+          break;
+      case 'Project':
+          typeValue = 4;
+          break;
+      default:
+          typeValue = null;
+  }
+  setFormData(prevData => ({ ...prevData, tasktype: typeValue }));
+};
+
   return (
     <>
      {isOpen && (
@@ -132,18 +157,22 @@ export function inModel({ isOpen, onClose, selectedDate}) {
                 onChange={handleChange}
                 required
                 />
-                <label htmlFor="tasktype" className="block text-sm font-medium text-buddha-950">
-                Task Type
+                <label className="block text-sm font-medium text-buddha-950">
+                    Task Type
                 </label>
-                <input 
-                type="text"
-                id="tasktype"
-                name="tasktype"
-                className="mt-1 p-2 w-full border border-buddha-950 rounded-md"
-                placeholder="Enter task type"
-                onChange={handleChange}
-                required
-                />
+                <Dropdown>
+                    <DropdownTrigger>
+                        <Button variant="flat" className='bg-buddha-500 text-buddha-950'>
+                          {selectedTaskType ? selectedTaskType : 'Select Task Type'}
+                        </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu aria-label="Task Types">
+                      <DropdownItem key="type1" onClick={() => handleTaskTypeChange('Test')}>Test</DropdownItem>
+                      <DropdownItem key="type2" onClick={() => handleTaskTypeChange('Quiz')}>Quiz</DropdownItem>
+                      <DropdownItem key="type3" onClick={() => handleTaskTypeChange('Assignment')}>Assignment</DropdownItem>
+                      <DropdownItem key="type4" onClick={() => handleTaskTypeChange('Project')}>Project</DropdownItem>
+                  </DropdownMenu>
+                </Dropdown>
                 <label htmlFor="duedate" className="block text-sm font-medium text-buddha-950">
                 Due Date
                 </label>
