@@ -5,6 +5,7 @@ import {DeleteIcon} from "../components/DeleteIcon";
 import {EyeIcon} from "../components/EyeIcon";
 import {Button} from "../components/Button"
 import { createClient } from '@supabase/supabase-js'
+import TaskModal from '../components/taskModal';
 
 const supabaseUrl: string = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey: string = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -51,6 +52,21 @@ export default function taskMenu() {
   const [userId, setUserId] = useState(null);
   const tasksRef = useRef<Task[]>([]);
   const [, forceUpdate] = useState({});
+  const [modalMode, setModalMode] = useState<'view' | 'edit' | 'delete'>('view');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedTask(null);
+  };
+
+  const openModalWithMode = (mode: 'view' | 'edit' | 'delete', task: Task) => {
+    setSelectedTask(task); // Set the selected task directly
+    setModalMode(mode);    // Set the modal mode
+    setIsModalOpen(true);  // Open the modal
+  };
+
 
   useEffect(() => {
       const retrieveUser = async () => {
@@ -133,22 +149,31 @@ export default function taskMenu() {
         return (
           <div className="relative flex items-center gap-2">
             <Tooltip content="Task Details">
-              <span className="text-lg text-gray-400 cursor-pointer hover:opacity-50">
-                <EyeIcon />
-              </span>
-            </Tooltip>
-            <Tooltip content="Edit Task">
-              <span className="text-lg text-gray-400 cursor-pointer hover:opacity-50">
+                <span
+                  className="text-lg text-gray-400 cursor-pointer hover:opacity-50"
+                  onClick={() => openModalWithMode('view', task.taskid)}
+                >
+                  <EyeIcon />
+                </span>
+              </Tooltip>
+              <Tooltip content="Edit Task">
+              <span
+                className="text-lg text-gray-400 cursor-pointer hover:opacity-50"
+                onClick={() => openModalWithMode('edit', task.taskid)}
+              >
                 <EditIcon />
               </span>
             </Tooltip>
             <Tooltip color="danger" content="Delete Task">
-              <span className="text-lg text-red-500 cursor-pointer hover:opacity-50">
+              <span
+                className="text-lg text-red-500 cursor-pointer hover:opacity-50"
+                onClick={() => openModalWithMode('delete', task.taskid)}
+              >
                 <DeleteIcon />
               </span>
             </Tooltip>
           </div>
-        );
+        );      
       case "recursion":
         return cellValue ? "True" : "False";
       default:
@@ -156,7 +181,6 @@ export default function taskMenu() {
     }
 }, []);
 
-  
   return (
     <div>
       <Table className="text-buddha-950" aria-label="Example table with custom cells">
@@ -177,6 +201,7 @@ export default function taskMenu() {
       </Table>
       <br />
       <Button />
+      <TaskModal isOpen={isModalOpen} onClose={closeModal} selectedTask={selectedTask} modalMode={modalMode} />
     </div>
   );
 }

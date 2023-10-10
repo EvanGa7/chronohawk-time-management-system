@@ -54,6 +54,7 @@ const config: Config = {
           950: '#3E220A',
         },
       'black': '#000000',
+      'clear': '#ffffff',
     }
   },
   
