@@ -65,7 +65,7 @@ const NewAccount = () => {
       if (insertError) {
         alert('Error inserting additional data: ' + insertError.message);
       } else {
-        router.push('/account/new/freetime'); // Redirect to the login page
+        router.push('/account/existing'); // Redirect to the login page
       }
     } else if (error) {
       // Handle error

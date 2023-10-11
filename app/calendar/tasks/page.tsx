@@ -10,20 +10,26 @@ const supabaseAnonKey: string = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-type TaskStatus = 'Not Started' | 'In Progress' | 'Completed';
-
 function prioritizeTasks(
   taskType: string,
   dueDate: Date,
   today: Date,
-  status: TaskStatus,
-  freeTimePerDay: number,
+  status: string,
+  freeTimePerDay: [
+    {
+      freetimeid: string,
+      userid : string,
+      dayoffree: number,
+      minutesavailable: number,
+    }
+  ],
   estimatedTimeNeeded: number,
   daysThoughtNeeded: number,
   importance: number,
   timeLeft: number
 ): number {
-  const maxUrgency = 10;
+  const maxUrgency = 10; 
+  const days = [0, 1, 2, 3, 4, 5, 6];
 
   // 1. Task Type Urgency
   const taskTypeWeights = {
@@ -48,32 +54,54 @@ function prioritizeTasks(
   // 3. Status Urgency
   const statusWeights = {
     'Not Started': 1,
-    'In Progress': 1.5,
-    'Completed': 0.5
+    'Completed': 0
   };
   const statusUrgency = statusWeights[status];
 
   // 4. Free Time Urgency
-  const freeTimeUrgency = estimatedTimeNeeded / (freeTimePerDay + 1); // +1 to avoid division by zero
+  // const freeTimeUrgency = estimatedTimeNeeded / (freeTimePerDay + 1); // +1 to avoid division by zero
+  let freeTimeUrgency = 0;
+  freeTimePerDay.forEach(freeTime => {
+    if (days.includes(freeTime.dayoffree)) {
+      freeTimeUrgency += freeTime.minutesavailable;
+    }
+  });
 
   // 5. Time Needed Urgency
   const timeNeededUrgency = daysLeft <= daysThoughtNeeded ? 2 : 1;
 
-  // 6. Importance Urgency
-  const importanceUrgency = Math.pow(importance, 2);
-
   // 7. Time Left Urgency
   const timeLeftUrgency = (estimatedTimeNeeded - timeLeft + 1) / (estimatedTimeNeeded + 1); // +1 to avoid division by zero
 
-  // Combine all urgencies using a weighted sum
-  const combinedUrgency = taskTypeUrgency + dueDateUrgency + statusUrgency + freeTimeUrgency + timeNeededUrgency + importanceUrgency + timeLeftUrgency;
+  // Maximum possible urgencies for each component
+  const maxTaskTypeUrgency = Math.max(...Object.values(taskTypeWeights));
+  const maxDueDateUrgency = 3; // Since daysLeft <= 1 is the maximum value
+  const maxStatusUrgency = Math.max(...Object.values(statusWeights));
+  const maxFreeTimeUrgency = 7 * 24 * 60; // Assuming a week's worth of minutes as the maximum
+  const maxTimeNeededUrgency = 2; // Since daysLeft <= daysThoughtNeeded is the maximum value
+  const maxImportanceUrgency = 1; // Since importance is squared and it's between 0 and 1
+  const maxTimeLeftUrgency = 1; // Since it's a fraction
 
-  // Normalize the urgency value
-  const normalizedUrgency = Math.min(combinedUrgency, maxUrgency);
+  const maxPossibleUrgency = maxTaskTypeUrgency + maxDueDateUrgency + maxStatusUrgency + maxFreeTimeUrgency + maxTimeNeededUrgency + maxImportanceUrgency + maxTimeLeftUrgency;
 
-  return normalizedUrgency;
+  // Normalize each urgency individually
+  const normalizedTaskTypeUrgency = taskTypeUrgency / maxTaskTypeUrgency;
+  const normalizedDueDateUrgency = dueDateUrgency / maxDueDateUrgency;
+  const normalizedStatusUrgency = statusUrgency / maxStatusUrgency;
+  const normalizedFreeTimeUrgency = freeTimeUrgency / maxFreeTimeUrgency;
+  const normalizedTimeNeededUrgency = timeNeededUrgency / maxTimeNeededUrgency;
+  const normalizedImportance = importance; // Since it's already between 0 and 1
+  const normalizedTimeLeftUrgency = timeLeftUrgency; // Since it's already between 0 and 1
+
+  // Combine normalized urgencies
+  const combinedUrgency = normalizedTaskTypeUrgency + normalizedDueDateUrgency + normalizedStatusUrgency + normalizedFreeTimeUrgency + normalizedTimeNeededUrgency + normalizedImportance + normalizedTimeLeftUrgency;
+
+  // Normalize the combined urgency to be between 1 and 10
+  const finalUrgency = Math.min(Math.max((combinedUrgency / 7) * 10, 1), 10); // Divided by 7 because there are 7 factors
+
+  const urgency = Math.floor(finalUrgency);
+  return urgency;
 }
-
 
 const NewTask = () => {
   const router = useRouter();
@@ -87,6 +115,13 @@ const NewTask = () => {
     setFormData(prevData => ({ ...prevData, importance: value }));
   };
 
+  const [freeTimeData, setFreeTimeData] = useState([{
+    freetimeid: '',
+    userid : '',
+    dayoffree: 0,
+    minutesavailable: 0,
+  }]);
+
   const [formData, setFormData] = useState({
     taskname: '',
     tasktype: '',
@@ -94,7 +129,7 @@ const NewTask = () => {
     estimatedtime: '',
     importance: 0,
     priorityof: 0,
-    statusof: 'Inactive',
+    statusof: 'Not Started',
     numdays: '',
     recursion: false,
     frequencycycle: '',
@@ -114,16 +149,45 @@ const NewTask = () => {
     setFormData((prevData) => ({ ...prevData, [name]: value }));
   };
 
+  const retrievedFreeTime = async () => {
+    const session = await supabase.auth.getSession();
+    if (session && session.data.session) {
+      const { data: retrievedFreeTime, error: retrieveFreeTimeError } = await supabase
+      .from('freetime')
+      .select('*')
+      .eq('userid', session.data.session.user?.id)
+
+      if (retrieveFreeTimeError) {
+        alert('Error retrieving freetime data: ' + retrieveFreeTimeError.message);
+        return;
+      }
+    // Map over the retrieved data to transform it into the desired format
+    const freeTimes = retrievedFreeTime.map(freeTime => ({
+      freetimeid: freeTime.freetimeid,
+      userid: freeTime.userid,
+      dayoffree: freeTime.dayoffree,
+      minutesavailable: freeTime.minutesavailable,
+    }));
+
+    setFreeTimeData(freeTimes);
+  }
+  }
+
+  useEffect(() => {
+    retrievedFreeTime();
+  }, []);
+
   const handlePriority = () => {
     const importance = parseFloat(formData.importance);
-    const daysLeft = parseInt(formData.numdays);
     const timeNeeded = parseFloat(formData.estimatedtime);
     const dueDate = new Date(formData.duedate);
     const today = new Date();
-
-    console.log("Importance:", importance);
-
-    const calculatedUrgency = prioritizeTasks(importance, daysLeft, timeNeeded, dueDate, today);
+    const status = formData.statusof;
+    const taskType = formData.tasktype;
+    const timeLeft = 4;
+    const daysThoughtNeeded = parseFloat(formData.numdays);
+    const freeTimePerDay = freeTimeData;
+    const calculatedUrgency = prioritizeTasks(taskType, dueDate, today, status, freeTimePerDay, timeNeeded, daysThoughtNeeded, importance, timeLeft);
 
     console.log("Calculated urgency:", calculatedUrgency);
 
@@ -273,7 +337,7 @@ const NewTask = () => {
             </label>
             <Dropdown>
                 <DropdownTrigger>
-                    <Button variant="flat" className='bg-buddha-500 text-buddha-950'>
+                    <Button variant="flat" className='bg-buddha-500 text-buddha-950 w-full'>
                       {selectedTaskType ? selectedTaskType : 'Select Task Type'}
                     </Button>
                 </DropdownTrigger>
@@ -340,7 +404,7 @@ const NewTask = () => {
               </label>
               <Dropdown>
                   <DropdownTrigger>
-                      <Button variant="flat" className='bg-buddha-500 text-buddha-950'>
+                      <Button variant="flat" className='bg-buddha-500 text-buddha-950 w-full'>
                           {selectedImportance ? selectedImportance : 'Select Importance'}
                       </Button>
                   </DropdownTrigger>

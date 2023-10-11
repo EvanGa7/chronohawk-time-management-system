@@ -32,47 +32,6 @@ export default function Calendar() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
 
-  // const [freeTime, setFreeTime] = useState({
-  //   freetimeid: '',
-  //   userid : userId,
-  //   dayoffree: 0,
-  //   minutesavailable: 0,
-  // });
-  // const freetime
-
-  // useEffect(() => {
-  //   const fetchFreeTime = async () => {
-  //     try {
-  //       const { data, error } = await supabase
-  //         .from('freetime')
-  //         .select('*')
-  //         .eq('userid', userId);
-
-  //       if (error) throw error;
-        
-  //       if (!data) {
-  //         router.push('/account/new/freetime');
-  //       }
-  //       else {
-  //         setFreeTime(data.map(freetime => ({
-  //           freetimeid: freetime.freetimeid,
-  //           userid : freetime.userid,
-  //           dayoffree: freetime.dayoffree,
-  //           minutesavailable: freetime.minutesavailable,
-  //           }))[0]);
-  //       }
-
-  //     } catch (error) {
-  //       console.error("Error fetching free time:", error.message);
-  //     }
-  //   };
-
-  //   if (userId) {
-  //     fetchFreeTime();
-  //   }
-  // }, [userId]);
-
-
   //check if signed in
   useEffect(() => {
     const fetchUserData = async () => {
@@ -92,6 +51,30 @@ export default function Calendar() {
     };
 
     fetchUserData();
+  }, []);
+
+  useEffect(() => {
+    const fetchFreeTime = async () => {
+      try {
+        const user = await supabase.auth.getUser();
+
+        const { data, error } = await supabase
+          .from('freetime')
+          .select('*')
+          .eq('userid', user.data.user.id);
+
+        if (error) throw error;
+        
+        if (data.length === 0) {
+          alert("Please enter your free time before adding tasks!");  
+          router.push('/account/new/freetime');
+        }
+
+      } catch (error) {
+        console.error("Error fetching free time:", error.message);
+      }
+    };
+    fetchFreeTime();
   }, []);
 
   useEffect(() => {

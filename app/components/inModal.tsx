@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, useDisclosure, Input } from "@nextui-org/react";
 import { createClient } from '@supabase/supabase-js';
 import {Checkbox} from "@nextui-org/react";
@@ -9,8 +9,161 @@ const supabaseAnonKey: string = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+function prioritizeTasks(
+  taskType: string,
+  dueDate: Date,
+  today: Date,
+  status: string,
+  freeTimePerDay: [
+    {
+      freetimeid: string,
+      userid : string,
+      dayoffree: number,
+      minutesavailable: number,
+    }
+  ],
+  estimatedTimeNeeded: number,
+  daysThoughtNeeded: number,
+  importance: number,
+  timeLeft: number
+): number {
+  const maxUrgency = 10; 
+  const days = [0, 1, 2, 3, 4, 5, 6];
+
+  // 1. Task Type Urgency
+  const taskTypeWeights = {
+    1: 4, // Test
+    2: 4, // Quiz
+    3: 2, // Assignment
+    4: 3, // Project
+    5: 2, // Lecture
+    6: 1, // Reading
+    7: 2, // Discussion
+    8: 5, // Final
+    9: 5, // Midterm
+    10: 3, // Presentation
+    11: 3, // Paper
+  };
+  const taskTypeUrgency = taskTypeWeights[taskType] || 1;
+
+  // 2. Due Date Urgency
+  const daysLeft = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const dueDateUrgency = daysLeft <= 1 ? 3 : 2/daysLeft;
+
+  // 3. Status Urgency
+  const statusWeights = {
+    'Not Started': 1,
+    'Completed': 0
+  };
+  const statusUrgency = statusWeights[status];
+
+  // 4. Free Time Urgency
+  // const freeTimeUrgency = estimatedTimeNeeded / (freeTimePerDay + 1); // +1 to avoid division by zero
+  let freeTimeUrgency = 0;
+  freeTimePerDay.forEach(freeTime => {
+    if (days.includes(freeTime.dayoffree)) {
+      freeTimeUrgency += freeTime.minutesavailable;
+    }
+  });
+
+  // 5. Time Needed Urgency
+  const timeNeededUrgency = daysLeft <= daysThoughtNeeded ? 2 : 1;
+
+  // 7. Time Left Urgency
+  const timeLeftUrgency = (estimatedTimeNeeded - timeLeft + 1) / (estimatedTimeNeeded + 1); // +1 to avoid division by zero
+
+  // Maximum possible urgencies for each component
+  const maxTaskTypeUrgency = Math.max(...Object.values(taskTypeWeights));
+  const maxDueDateUrgency = 3; // Since daysLeft <= 1 is the maximum value
+  const maxStatusUrgency = Math.max(...Object.values(statusWeights));
+  const maxFreeTimeUrgency = 7 * 24 * 60; // Assuming a week's worth of minutes as the maximum
+  const maxTimeNeededUrgency = 2; // Since daysLeft <= daysThoughtNeeded is the maximum value
+  const maxImportanceUrgency = 1; // Since importance is squared and it's between 0 and 1
+  const maxTimeLeftUrgency = 1; // Since it's a fraction
+
+  const maxPossibleUrgency = maxTaskTypeUrgency + maxDueDateUrgency + maxStatusUrgency + maxFreeTimeUrgency + maxTimeNeededUrgency + maxImportanceUrgency + maxTimeLeftUrgency;
+
+  // Normalize each urgency individually
+  const normalizedTaskTypeUrgency = taskTypeUrgency / maxTaskTypeUrgency;
+  const normalizedDueDateUrgency = dueDateUrgency / maxDueDateUrgency;
+  const normalizedStatusUrgency = statusUrgency / maxStatusUrgency;
+  const normalizedFreeTimeUrgency = freeTimeUrgency / maxFreeTimeUrgency;
+  const normalizedTimeNeededUrgency = timeNeededUrgency / maxTimeNeededUrgency;
+  const normalizedImportance = importance; // Since it's already between 0 and 1
+  const normalizedTimeLeftUrgency = timeLeftUrgency; // Since it's already between 0 and 1
+
+  // Combine normalized urgencies
+  const combinedUrgency = normalizedTaskTypeUrgency + normalizedDueDateUrgency + normalizedStatusUrgency + normalizedFreeTimeUrgency + normalizedTimeNeededUrgency + normalizedImportance + normalizedTimeLeftUrgency;
+
+  // Normalize the combined urgency to be between 1 and 10
+  const finalUrgency = Math.min(Math.max((combinedUrgency / 7) * 10, 1), 10); // Divided by 7 because there are 7 factors 
+
+  const urgency = Math.floor(finalUrgency);
+  return urgency;
+}
+
 export function inModel({ isOpen, onClose, selectedDate}) {
   const [isRecursive, setIsRecursive] = useState(false); // New state for recursion checkbox
+  const [selectedImportance, setSelectedImportance] = useState<string | null>(null);
+  const [importanceValue, setImportanceValue] = useState<number | null>(null);
+  const handleImportanceChange = (label: string, value: number) => {
+    setSelectedImportance(label);
+    setImportanceValue(value);
+    // Update formData or any other state if needed
+    setFormData(prevData => ({ ...prevData, importance: value }));
+  };
+
+  const [freeTimeData, setFreeTimeData] = useState([{
+    freetimeid: '',
+    userid : '',
+    dayoffree: 0,
+    minutesavailable: 0,
+  }]);
+
+  const retrievedFreeTime = async () => {
+    const session = await supabase.auth.getSession();
+    if (session && session.data.session) {
+      const { data: retrievedFreeTime, error: retrieveFreeTimeError } = await supabase
+      .from('freetime')
+      .select('*')
+      .eq('userid', session.data.session.user?.id)
+
+      if (retrieveFreeTimeError) {
+        alert('Error retrieving freetime data: ' + retrieveFreeTimeError.message);
+        return;
+      }
+    // Map over the retrieved data to transform it into the desired format
+    const freeTimes = retrievedFreeTime.map(freeTime => ({
+      freetimeid: freeTime.freetimeid,
+      userid: freeTime.userid,
+      dayoffree: freeTime.dayoffree,
+      minutesavailable: freeTime.minutesavailable,
+    }));
+
+    setFreeTimeData(freeTimes);
+  }
+  }
+
+  useEffect(() => {
+    retrievedFreeTime();
+  }, []);
+
+  const handlePriority = () => {
+    const importance = parseFloat(formData.importance);
+    const timeNeeded = parseFloat(formData.estimatedtime);
+    const dueDate = new Date(selectedDate);
+    const today = new Date();
+    const status = formData.statusof;
+    const taskType = formData.tasktype;
+    const timeLeft = formData.time;
+    const daysThoughtNeeded = parseFloat(formData.numdays);
+    const freeTimePerDay = freeTimeData;
+    const calculatedUrgency = prioritizeTasks(taskType, dueDate, today, status, freeTimePerDay, timeNeeded, daysThoughtNeeded, importance, timeLeft);
+
+    console.log("Calculated urgency:", calculatedUrgency);
+
+    return calculatedUrgency;
+  }
 
   let formattedDate;
   if (selectedDate) {
@@ -21,13 +174,15 @@ export function inModel({ isOpen, onClose, selectedDate}) {
     taskname: '',
     tasktype: '',
     estimatedtime: '',
+    timeleft: '',
     priorityof: '0',
-    statusof: 'Inactive',
+    statusof: 'Not Started',
     numdays: '',
     recursion: false,
     frequencycycle: '',
     repetitioncycle: '',
     cyclestartdate: '',
+    importance: 0,
   });
 
   const handleCheckboxChange = () => {
@@ -41,6 +196,8 @@ export function inModel({ isOpen, onClose, selectedDate}) {
   };
 
   const handleSubmit = async () => {
+
+    const urgency = handlePriority();
   
     // Insert the new task into the 'tasks' table
     const session = await supabase.auth.getSession();
@@ -54,10 +211,11 @@ export function inModel({ isOpen, onClose, selectedDate}) {
           duedate: formattedDate,
           estimatedtime: formData.estimatedtime,
           timeleft: formData.estimatedtime,
-          priorityof: formData.priorityof,
+          priorityof: urgency,
           statusof: formData.statusof,
           numdays: formData.numdays,
           recursion: formData.recursion,
+          importance: formData.importance,
         }]);
     } else {
       alert('Error inserting task data: ' + Error.prototype.message);
@@ -73,7 +231,7 @@ export function inModel({ isOpen, onClose, selectedDate}) {
     .eq('duedate', formattedDate)
     .eq('estimatedtime', formData.estimatedtime)
     .eq('timeleft', formData.estimatedtime)
-    .eq('priorityof', formData.priorityof)
+    .eq('priorityof', urgency)
     .eq('statusof', formData.statusof)
     .eq('numdays', formData.numdays)
     .eq('recursion', formData.recursion)
@@ -231,11 +389,26 @@ const handleTaskTypeChange = (selectedType: string) => {
                 onChange={handleChange}
                 required
                 />
+                <label className="block text-sm font-medium text-buddha-950">
+                      Task Importance
+                  </label>
+                  <Dropdown>
+                      <DropdownTrigger>
+                          <Button variant="flat" className='bg-buddha-500 text-buddha-950'>
+                              {selectedImportance ? selectedImportance : 'Select Importance'}
+                          </Button>
+                      </DropdownTrigger>
+                      <DropdownMenu aria-label="Task Importance">
+                          <DropdownItem key="importance1" onClick={() => handleImportanceChange('Low Importance', 0.25)}>Low Importance</DropdownItem>
+                          <DropdownItem key="importance2" onClick={() => handleImportanceChange('Medium Importance', 0.5)}>Medium Importance</DropdownItem>
+                          <DropdownItem key="importance3" onClick={() => handleImportanceChange('High Importance', 0.75)}>High Importance</DropdownItem>
+                          <DropdownItem key="importance4" onClick={() => handleImportanceChange('ASAP', 1)}>ASAP</DropdownItem>
+                      </DropdownMenu>
+                  </Dropdown>
                 <label htmlFor="recursion" className="block text-sm font-medium text-buddha-950">
                 Task Recursion
                 </label>
                 <Checkbox onChange={handleCheckboxChange} />
-
             {isRecursive && (
                 <>
                     <label htmlFor="cyclestartdate" className="block text-sm font-medium text-buddha-950">

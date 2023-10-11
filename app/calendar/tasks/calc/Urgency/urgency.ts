@@ -1,12 +1,5 @@
 
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js'
-import { user } from '@nextui-org/react';
-
-const supabaseUrl: string = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey: string = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 
 export function prioritizeTasks(
@@ -28,52 +21,6 @@ export function prioritizeTasks(
 ): number {
   let urgency: number;
   let timePlannedToday: number = 0;
-
-  //get the user id
-  const [userId, setUserId] = useState<number | null>(null);
-
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const user = await supabase.auth.getUser();
-        
-        if (!user || !user.data || !user.data.user || !user.data.user.id) {
-            throw new Error('A user is not logged in!');
-        }
-
-        setUserId(user.data.user.id);
-
-      } catch (error) {
-        alert(error.message);
-        router.push('/account');
-      }
-    };
-
-    fetchUserData();
-  }, []);
-
-  //retrieve the freetime for the user
-  useEffect(() => {
-    async function getFreeTime() {
-
-      const { data, error } = await supabase
-        .from('freetime')
-        .select('*')
-        .eq('userID', userId)
-        .single()
-
-      if (error) {
-        alert(error.message);
-      }
-
-      if (data) {
-       
-      }
-
-    }
-  })
-
-
   
     if (taskType === 1 || taskType === 2) {
       if (dueDate && dueDate > today) {
@@ -140,3 +87,4 @@ export function prioritizeTasks(
     result.setDate(result.getDate() + days);
     return result;
   }
+  
