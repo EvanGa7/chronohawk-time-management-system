@@ -13,6 +13,52 @@ export function taskModal({ isOpen, onClose, selectedTask, modalMode: initialMod
   const [isEditMode, setIsEditMode] = useState(false);
   const [modalMode, setModalMode] = useState<'view' | 'edit' | 'delete'>(initialModalMode || 'view');
 
+  const handleCheckboxChange = async () => {
+    if (!formData.recursion) {
+      setIsRecursive(true);
+      setFormData(prevData => ({ ...prevData, recursion: true }));
+      try {
+        await insertRecursionData();
+      } catch (error) {
+        alert('Error inserting recursion data: ' + error.message);
+        // Revert UI changes if there's an error
+        setIsRecursive(false);
+        setFormData(prevData => ({ ...prevData, recursion: false }));
+      }
+    } else {
+      setIsRecursive(false);
+      setFormData(prevData => ({ ...prevData, recursion: false }));
+      try {
+        await deleteRecursionData();
+      } catch (error) {
+        alert('Error deleting recursion data: ' + error.message);
+        // Revert UI changes if there's an error
+        setIsRecursive(true);
+        setFormData(prevData => ({ ...prevData, recursion: true }));
+      }
+    }
+  };
+  
+  const insertRecursionData = async () => {
+    const { error } = await supabase
+      .from('recursion')
+      .insert([{
+        taskid: selectedTask,
+        frequencycycle: formData.frequencycycle,
+        repetitioncycle: formData.repetitioncycle,
+        cyclestartdate: formData.cyclestartdate,
+      }]);
+    if (error) throw error;
+  };
+  
+  const deleteRecursionData = async () => {
+    const { error } = await supabase
+      .from('recursion')
+      .delete()
+      .eq('taskid', selectedTask);
+    if (error) throw error;
+  };
+
   useEffect(() => {
     setModalMode(initialModalMode);
   }, [initialModalMode]);
@@ -179,6 +225,27 @@ export function taskModal({ isOpen, onClose, selectedTask, modalMode: initialMod
         case 'Project':
             typeValue = 4;
             break;
+        case 'Lecture':
+            typeValue = 5;
+            break;
+        case 'Reading':
+            typeValue = 6;
+            break;
+        case 'Discussion':
+            typeValue = 7;
+            break;
+        case 'Final':
+            typeValue = 8;
+            break;
+        case 'Midterm':
+            typeValue = 9;
+            break;
+        case 'Presentation': 
+            typeValue = 10;
+            break;
+        case 'Paper':
+            typeValue = 11;
+            break;
         default:
             typeValue = null;
     }
@@ -244,6 +311,13 @@ export function taskModal({ isOpen, onClose, selectedTask, modalMode: initialMod
                             <DropdownItem key="type2" onClick={() => handleTaskTypeChange('Quiz')}>Quiz</DropdownItem>
                             <DropdownItem key="type3" onClick={() => handleTaskTypeChange('Assignment')}>Assignment</DropdownItem>
                             <DropdownItem key="type4" onClick={() => handleTaskTypeChange('Project')}>Project</DropdownItem>
+                            <DropdownItem key="type5" onClick={() => handleTaskTypeChange('Lecture')}>Lecture</DropdownItem>
+                            <DropdownItem key="type6" onClick={() => handleTaskTypeChange('Reading')}>Reading</DropdownItem>
+                            <DropdownItem key="type7" onClick={() => handleTaskTypeChange('Discussion')}>Discussion</DropdownItem>
+                            <DropdownItem key="type8" onClick={() => handleTaskTypeChange('Final')}>Final</DropdownItem>
+                            <DropdownItem key="type9" onClick={() => handleTaskTypeChange('Midterm')}>Midterm</DropdownItem>
+                            <DropdownItem key="type10" onClick={() => handleTaskTypeChange('Presentation')}>Presentation</DropdownItem>
+                            <DropdownItem key="type11" onClick={() => handleTaskTypeChange('Paper')}>Paper</DropdownItem>     
                         </DropdownMenu>
                       </Dropdown>
                     </div>
@@ -273,8 +347,9 @@ export function taskModal({ isOpen, onClose, selectedTask, modalMode: initialMod
                       </label>
                       <Checkbox
                         id="recursion"
-                        checked={isRecursive}
-                        onChange={e => setIsRecursive(e.target.checked)}/>
+                        checked={formData.recursion}
+                        onChange={handleCheckboxChange}
+                      />
                     </div>
                     {isRecursive && (
                     <>

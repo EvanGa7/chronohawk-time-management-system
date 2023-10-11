@@ -127,6 +127,27 @@ const handleTaskTypeChange = (selectedType: string) => {
       case 'Project':
           typeValue = 4;
           break;
+      case 'Lecture':
+          typeValue = 5;
+          break;
+      case 'Reading':
+          typeValue = 6;
+          break;
+      case 'Discussion':
+          typeValue = 7;
+          break;
+      case 'Final':
+          typeValue = 8;
+          break;
+      case 'Midterm':
+          typeValue = 9;
+          break;
+      case 'Presentation': 
+          typeValue = 10;
+          break;
+      case 'Paper':
+          typeValue = 11;
+          break;
       default:
           typeValue = null;
   }
@@ -171,6 +192,13 @@ const handleTaskTypeChange = (selectedType: string) => {
                       <DropdownItem key="type2" onClick={() => handleTaskTypeChange('Quiz')}>Quiz</DropdownItem>
                       <DropdownItem key="type3" onClick={() => handleTaskTypeChange('Assignment')}>Assignment</DropdownItem>
                       <DropdownItem key="type4" onClick={() => handleTaskTypeChange('Project')}>Project</DropdownItem>
+                      <DropdownItem key="type5" onClick={() => handleTaskTypeChange('Lecture')}>Lecture</DropdownItem>
+                      <DropdownItem key="type6" onClick={() => handleTaskTypeChange('Reading')}>Reading</DropdownItem>
+                      <DropdownItem key="type7" onClick={() => handleTaskTypeChange('Discussion')}>Discussion</DropdownItem>
+                      <DropdownItem key="type8" onClick={() => handleTaskTypeChange('Final')}>Final</DropdownItem>
+                      <DropdownItem key="type9" onClick={() => handleTaskTypeChange('Midterm')}>Midterm</DropdownItem>
+                      <DropdownItem key="type10" onClick={() => handleTaskTypeChange('Presentation')}>Presentation</DropdownItem>
+                      <DropdownItem key="type11" onClick={() => handleTaskTypeChange('Paper')}>Paper</DropdownItem>
                   </DropdownMenu>
                 </Dropdown>
                 <label htmlFor="duedate" className="block text-sm font-medium text-buddha-950">

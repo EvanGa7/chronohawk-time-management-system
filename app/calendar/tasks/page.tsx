@@ -10,165 +10,90 @@ const supabaseAnonKey: string = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
+type TaskStatus = 'Not Started' | 'In Progress' | 'Completed';
+
 function prioritizeTasks(
-  taskType: number,
-  dueDate: Date | null,
+  taskType: string,
+  dueDate: Date,
   today: Date,
-  urgencyThreshold: number,
-  importanceScale: number,
-  timeNeeded: number | null,
-  daysLeft: number,
-  type: number,
-  dueTime: Date | null,
-  currentTime: Date,
-  currentCycleStartDate: Date | null,
-  timesDoneWithinCycle: number,
-  N: number,
-  max: number,
-  freeTime: (date: Date) => number
+  status: TaskStatus,
+  freeTimePerDay: number,
+  estimatedTimeNeeded: number,
+  daysThoughtNeeded: number,
+  importance: number,
+  timeLeft: number
 ): number {
-  let urgency: number;
-  let timePlannedToday: number = 0;
+  const maxUrgency = 10;
 
-  //get the user id
-  const [userId, setUserId] = useState<number | null>(null);
+  // 1. Task Type Urgency
+  const taskTypeWeights = {
+    1: 4, // Test
+    2: 4, // Quiz
+    3: 2, // Assignment
+    4: 3, // Project
+    5: 2, // Lecture
+    6: 1, // Reading
+    7: 2, // Discussion
+    8: 5, // Final
+    9: 5, // Midterm
+    10: 3, // Presentation
+    11: 3, // Paper
+  };
+  const taskTypeUrgency = taskTypeWeights[taskType] || 1;
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const user = await supabase.auth.getUser();
-        
-        if (!user || !user.data || !user.data.user || !user.data.user.id) {
-            throw new Error('A user is not logged in!');
-        }
+  // 2. Due Date Urgency
+  const daysLeft = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  const dueDateUrgency = daysLeft <= 1 ? 3 : 2/daysLeft;
 
-        setUserId(user.data.user.id);
+  // 3. Status Urgency
+  const statusWeights = {
+    'Not Started': 1,
+    'In Progress': 1.5,
+    'Completed': 0.5
+  };
+  const statusUrgency = statusWeights[status];
 
-      } catch (error) {
-        alert(error.message);
-        router.push('/account');
-      }
-    };
+  // 4. Free Time Urgency
+  const freeTimeUrgency = estimatedTimeNeeded / (freeTimePerDay + 1); // +1 to avoid division by zero
 
-    fetchUserData();
-  }, []);
+  // 5. Time Needed Urgency
+  const timeNeededUrgency = daysLeft <= daysThoughtNeeded ? 2 : 1;
 
-  //retrieve the freetime for the user
-  useEffect(() => {
-    async function getFreeTime() {
+  // 6. Importance Urgency
+  const importanceUrgency = Math.pow(importance, 2);
 
-      const { data, error } = await supabase
-        .from('freetime')
-        .select('*')
-        .eq('userID', userId)
-        .single()
+  // 7. Time Left Urgency
+  const timeLeftUrgency = (estimatedTimeNeeded - timeLeft + 1) / (estimatedTimeNeeded + 1); // +1 to avoid division by zero
 
-      if (error) {
-        alert(error.message);
-      }
+  // Combine all urgencies using a weighted sum
+  const combinedUrgency = taskTypeUrgency + dueDateUrgency + statusUrgency + freeTimeUrgency + timeNeededUrgency + importanceUrgency + timeLeftUrgency;
 
-      if (data) {
-       
-      }
+  // Normalize the urgency value
+  const normalizedUrgency = Math.min(combinedUrgency, maxUrgency);
 
-    }
-  })
+  return normalizedUrgency;
+}
 
-  //retrieve the tasks for the user
-  useEffect(() => {
-    async function getTasks() {
-
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('userID', userId)
-
-      if (error) {
-        alert(error.message);
-      }
-
-      if (data) {
-       
-      }
-
-    }
-  })
-
-    if (taskType === 1 || taskType === 2) {
-      if (dueDate && dueDate > today) {
-
-        const twoWeeksAgo = new Date();
-        twoWeeksAgo.setDate(today.getDate() - 14);
-    
-        if (dueDate < twoWeeksAgo) {
-          // Deactivate or delete it in SQL.
-          // Deactivation or deletion logic here...
-        }
-
-      }
-  
-      if (dueDate && dueDate <= addDays(today, 1)) {
-        // When dueDate exists and is due tomorrow or today.
-        urgency = max + max * importanceScale;
-      } else {
-        urgency =
-          max * importanceScale + (timeNeeded ? timeNeeded / daysLeft : 0); // If timeNeeded exists.
-      }
-    } else if (type === 3) {
-      if (
-        dueDate &&
-        dueDate.toDateString() === today.toDateString() &&
-        dueTime &&
-        dueTime.getTime() >= currentTime.getTime() + (timeNeeded || 0)
-      ) {
-        // Here dueDate is the most recent day, calculated based on repeating.
-        urgency = max; // Task with fixed schedule, must list if not past the scheduled time.
-      } else {
-        urgency = -1;
-      }
-    } else if (type === 4) {
-      if (currentCycleStartDate && currentCycleStartDate <= today && timesDoneWithinCycle < N) {
-        // timesDoneWithinCycle and currentCycleStartDate require calculation/user update.
-        urgency = max * importanceScale;
-      } else {
-        urgency = -1;
-      }
-    } else {
-      // type === 5
-      urgency = 0; // Optional
-    }
-  
-    // Input: list of tasks and urgency.
-    // Output: list of tasks to display, sorted by urgency.
-    // Procedure: sorting tasks on urgency.
-    
-    if (urgency >= max) {
-      // Add task to display list.
-      // Update timePlannedToday.
-    } else if (urgency >= 0 && timePlannedToday < freeTime(today)) {
-      // Add task to display list.
-      // Update timePlannedToday.
-    }
-  
-    return urgency;
-  }
-
-  
-  function addDays(date: Date, days: number): Date {
-    const result = new Date(date);
-    result.setDate(result.getDate() + days);
-    return result;
-  }
 
 const NewTask = () => {
   const router = useRouter();
+  const [selectedImportance, setSelectedImportance] = useState<string | null>(null);
+  const [importanceValue, setImportanceValue] = useState<number | null>(null);
+  const [urgency, setUrgency] = useState<number>(0);
+  const handleImportanceChange = (label: string, value: number) => {
+    setSelectedImportance(label);
+    setImportanceValue(value);
+    // Update formData or any other state if needed
+    setFormData(prevData => ({ ...prevData, importance: value }));
+  };
 
   const [formData, setFormData] = useState({
     taskname: '',
     tasktype: '',
     duedate: '',
     estimatedtime: '',
-    priorityof: '0',
+    importance: 0,
+    priorityof: 0,
     statusof: 'Inactive',
     numdays: '',
     recursion: false,
@@ -189,19 +114,28 @@ const NewTask = () => {
     setFormData((prevData) => ({ ...prevData, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    const importance = parseFloat(formData.priorityof); // Assuming priorityof is a value between 0 and 1
+  const handlePriority = () => {
+    const importance = parseFloat(formData.importance);
     const daysLeft = parseInt(formData.numdays);
     const timeNeeded = parseFloat(formData.estimatedtime);
     const dueDate = new Date(formData.duedate);
     const today = new Date();
 
-    const urgency = prioritizeTasks(importance, daysLeft, timeNeeded, dueDate, today);
+    console.log("Importance:", importance);
 
-    setFormData(prevData => ({ ...prevData, priorityof: urgency.toString() }));
-  
+    const calculatedUrgency = prioritizeTasks(importance, daysLeft, timeNeeded, dueDate, today);
+
+    console.log("Calculated urgency:", calculatedUrgency);
+
+    return calculatedUrgency;
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    // Calculate the priority of the task
+    const urgency = handlePriority();
+
     // Insert the new task into the 'tasks' table
     const session = await supabase.auth.getSession();
     if (session && session.data.session) {
@@ -214,10 +148,11 @@ const NewTask = () => {
           duedate: formData.duedate,
           estimatedtime: formData.estimatedtime,
           timeleft: formData.estimatedtime,
-          priorityof: formData.priorityof,
+          priorityof: urgency,
           statusof: formData.statusof,
           numdays: formData.numdays,
           recursion: formData.recursion,
+          importance: formData.importance,
         }]);
     } else {
       alert('Error inserting task data: ' + Error.prototype.message);
@@ -233,10 +168,11 @@ const NewTask = () => {
     .eq('duedate', formData.duedate)
     .eq('estimatedtime', formData.estimatedtime)
     .eq('timeleft', formData.estimatedtime)
-    .eq('priorityof', formData.priorityof)
+    .eq('priorityof', urgency)
     .eq('statusof', formData.statusof)
     .eq('numdays', formData.numdays)
     .eq('recursion', formData.recursion)
+    .eq('importance', formData.importance)
     .single();
 
     if (retrieveError) {
@@ -285,6 +221,27 @@ const NewTask = () => {
         case 'Project':
             typeValue = 4;
             break;
+        case 'Lecture':
+            typeValue = 5;
+            break;
+        case 'Reading':
+            typeValue = 6;
+            break;
+        case 'Discussion':
+            typeValue = 7;
+            break;
+        case 'Final':
+            typeValue = 8;
+            break;
+        case 'Midterm':
+            typeValue = 9;
+            break;
+        case 'Presentation': 
+            typeValue = 10;
+            break;
+        case 'Paper':
+            typeValue = 11;
+            break;
         default:
             typeValue = null;
     }
@@ -325,6 +282,13 @@ const NewTask = () => {
                   <DropdownItem key="type2" onClick={() => handleTaskTypeChange('Quiz')}>Quiz</DropdownItem>
                   <DropdownItem key="type3" onClick={() => handleTaskTypeChange('Assignment')}>Assignment</DropdownItem>
                   <DropdownItem key="type4" onClick={() => handleTaskTypeChange('Project')}>Project</DropdownItem>
+                  <DropdownItem key="type5" onClick={() => handleTaskTypeChange('Lecture')}>Lecture</DropdownItem>
+                  <DropdownItem key="type6" onClick={() => handleTaskTypeChange('Reading')}>Reading</DropdownItem>
+                  <DropdownItem key="type7" onClick={() => handleTaskTypeChange('Discussion')}>Discussion</DropdownItem>
+                  <DropdownItem key="type8" onClick={() => handleTaskTypeChange('Final')}>Final</DropdownItem>
+                  <DropdownItem key="type9" onClick={() => handleTaskTypeChange('Midterm')}>Midterm</DropdownItem>
+                  <DropdownItem key="type10" onClick={() => handleTaskTypeChange('Presentation')}>Presentation</DropdownItem>
+                  <DropdownItem key="type11" onClick={() => handleTaskTypeChange('Paper')}>Paper</DropdownItem>
               </DropdownMenu>
             </Dropdown>
           </div>
@@ -369,6 +333,24 @@ const NewTask = () => {
               onChange={handleChange}
               required
             />
+          </div>
+          <div className="mb-4">
+              <label className="block text-sm font-medium text-buddha-200">
+                  Task Importance
+              </label>
+              <Dropdown>
+                  <DropdownTrigger>
+                      <Button variant="flat" className='bg-buddha-500 text-buddha-950'>
+                          {selectedImportance ? selectedImportance : 'Select Importance'}
+                      </Button>
+                  </DropdownTrigger>
+                  <DropdownMenu aria-label="Task Importance">
+                      <DropdownItem key="importance1" onClick={() => handleImportanceChange('Low Importance', 0.25)}>Low Importance</DropdownItem>
+                      <DropdownItem key="importance2" onClick={() => handleImportanceChange('Medium Importance', 0.5)}>Medium Importance</DropdownItem>
+                      <DropdownItem key="importance3" onClick={() => handleImportanceChange('High Importance', 0.75)}>High Importance</DropdownItem>
+                      <DropdownItem key="importance4" onClick={() => handleImportanceChange('ASAP', 1)}>ASAP</DropdownItem>
+                  </DropdownMenu>
+              </Dropdown>
           </div>
           <div className="mb-4">
             <label htmlFor="recursion" className="block text-sm font-medium text-buddha-200">
