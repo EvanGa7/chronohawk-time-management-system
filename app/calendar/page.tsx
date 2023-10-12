@@ -32,6 +32,122 @@ export default function Calendar() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
 
+  const [freeTime, setFreeTime] = useState([{
+    freetimeid: '',
+    userid: '',
+    dayoffree: 0,
+    minutesavailable: 0,
+  }]
+  );
+
+  const [freeTimeByDay, setFreeTimeByDay] = useState({});
+
+  useEffect(() => {
+    const freeTimeObj = freeTime.reduce((acc, curr) => {
+      acc[curr.dayoffree] = curr.minutesavailable;
+      return acc;
+    }, {});
+    setFreeTimeByDay(freeTimeObj);
+  }, [freeTime]);
+
+  const calculateTaskDuration = (taskDuration, startDate) => {
+    let remainingDuration = taskDuration;
+    let currentDate = new Date(startDate);
+  
+    while (remainingDuration > 0) {
+      const dayOfWeek = currentDate.getDay();
+      const availableTime = freeTimeByDay[dayOfWeek] || 0;
+  
+      if (availableTime >= remainingDuration) {
+        break;
+      }
+  
+      remainingDuration -= availableTime;
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+  
+    return {
+      start: startDate,
+      end: currentDate,
+    };
+  };
+
+  const updateFreeTime = (taskDuration, startDate) => {
+    let remainingDuration = taskDuration;
+    let currentDate = new Date(startDate);
+    const updatedFreeTime = { ...freeTimeByDay };
+  
+    while (remainingDuration > 0) {
+      const dayOfWeek = currentDate.getDay();
+      const availableTime = updatedFreeTime[dayOfWeek] || 0;
+  
+      if (availableTime >= remainingDuration) {
+        updatedFreeTime[dayOfWeek] -= remainingDuration;
+        break;
+      }
+  
+      updatedFreeTime[dayOfWeek] = 0;
+      remainingDuration -= availableTime;
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+  
+    setFreeTimeByDay(updatedFreeTime);
+  };
+
+  const updateTask = async (taskData) => {
+    // 1. Fetch existing tasks for the day
+    const targetDate = new Date(taskData.date).toISOString().split('T')[0]; // Get YYYY-MM-DD format
+    const { data: existingTasks, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('duedate', targetDate)
+      .eq('userid', userId);
+  
+    if (error) {
+      console.error("Error fetching tasks:", error.message);
+      return;
+    }
+  
+    // 2. Calculate total time for existing tasks
+    const totalTimeForExistingTasks = existingTasks.reduce((sum, task) => sum + task.estimatedDuration, 0);
+  
+    // 3. Check against free time
+    const dayOfWeek = new Date(taskData.date).getDay();
+    const availableFreeTime = freeTimeByDay[dayOfWeek] || 0;
+  
+    if (totalTimeForExistingTasks + taskData.estimatedDuration > availableFreeTime) {
+      alert("You don't have enough free time on this day to update this task.");
+      return;
+    }
+  
+    const { start, end } = calculateTaskDuration(taskData.estimatedDuration, taskData.startDate);
+    taskData.start = start;
+    taskData.end = end;
+  
+    updateFreeTime(taskData.estimatedDuration, taskData.startDate);
+
+    // Check if the task already exists
+    const existingTask = existingTasks.find(t => t.id === taskData.id);
+
+    if (existingTask) {
+        // Update the existing task
+        const { error: updateError } = await supabase
+          .from('tasks')
+          .update(taskData)
+          .eq('id', taskData.id);
+
+        if (updateError) {
+          console.error("Error updating task:", updateError.message);
+          return;
+        }
+
+        alert("Task updated successfully!");
+    } else {
+        alert("Task does not exist. Cannot update.");
+    }
+};
+
+
   //check if signed in
   useEffect(() => {
     const fetchUserData = async () => {
@@ -68,7 +184,18 @@ export default function Calendar() {
         if (data.length === 0) {
           alert("Please enter your free time before adding tasks!");  
           router.push('/account/new/freetime');
+        } else {
+          // Map over the retrieved data to transform it into the desired format
+          const freeTimes = data.map(freeTime => ({
+            freetimeid: freeTime.freetimeid,
+            userid: freeTime.userid,
+            dayoffree: freeTime.dayoffree,
+            minutesavailable: freeTime.minutesavailable,
+          }));
+          
+          setFreeTime(freeTimes);
         }
+
 
       } catch (error) {
         console.error("Error fetching free time:", error.message);
@@ -89,8 +216,8 @@ export default function Calendar() {
 
         const formattedTasks = data.map(task => ({
           title: task.taskname,
-          start: task.duedate, // Assuming duedate is the start date
-          end: task.duedate,   // Assuming duedate is the end date
+          start: task.duedate,
+          end: task.duedate, 
           eventHeight: 30,
           taskid: task.taskid  // Include the taskid as a custom property
         }));

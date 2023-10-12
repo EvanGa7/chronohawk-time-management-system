@@ -115,6 +115,56 @@ export function taskModal({ isOpen, onClose, selectedTask, modalMode: initialMod
     setFormData(prevData => ({ ...prevData, importance: value }));
   };
 
+  const [freeTimeData, setFreeTimeData] = useState([{
+    freetimeid: '',
+    userid : '',
+    dayoffree: 0,
+    minutesavailable: 0,
+  }]);
+
+  const retrievedFreeTime = async () => {
+    const session = await supabase.auth.getSession();
+    if (session && session.data.session) {
+      const { data: retrievedFreeTime, error: retrieveFreeTimeError } = await supabase
+      .from('freetime')
+      .select('*')
+      .eq('userid', session.data.session.user?.id)
+
+      if (retrieveFreeTimeError) {
+        alert('Error retrieving freetime data: ' + retrieveFreeTimeError.message);
+        return;
+      }
+    // Map over the retrieved data to transform it into the desired format
+    const freeTimes = retrievedFreeTime.map(freeTime => ({
+      freetimeid: freeTime.freetimeid,
+      userid: freeTime.userid,
+      dayoffree: freeTime.dayoffree,
+      minutesavailable: freeTime.minutesavailable,
+    }));
+
+    setFreeTimeData(freeTimes);
+  }
+  }
+
+  useEffect(() => {
+    retrievedFreeTime();
+  }, []);
+
+  const handlePriority = () => {
+    const importance = parseFloat(formData.importance);
+    const timeNeeded = parseFloat(formData.estimatedtime);
+    const dueDate = new Date(formData.duedate);
+    const today = new Date();
+    const status = formData.statusof;
+    const taskType = formData.tasktype;
+    const timeLeft = formData.timeleft;
+    const daysThoughtNeeded = parseFloat(formData.numdays);
+    const freeTimePerDay = freeTimeData;
+    const calculatedUrgency = prioritizeTasks(taskType, dueDate, today, status, freeTimePerDay, timeNeeded, daysThoughtNeeded, importance, timeLeft);
+
+    return calculatedUrgency;
+  }
+
   const handleCheckboxChange = async () => {
     if (!formData.recursion) {
       setIsRecursive(true);
@@ -241,6 +291,9 @@ export function taskModal({ isOpen, onClose, selectedTask, modalMode: initialMod
   };
 
   const saveEditedTask = async () => {
+
+    let urgency = handlePriority();
+
     const { error } = await supabase
       .from('tasks')
       .update({
@@ -248,7 +301,7 @@ export function taskModal({ isOpen, onClose, selectedTask, modalMode: initialMod
         tasktype: formData.tasktype,
         duedate: formData.duedate,
         estimatedtime: formData.estimatedtime,
-        priorityof: formData.priorityof,
+        priorityof: urgency,
         statusof: formData.statusof,
         numdays: formData.numdays,
         recursion: formData.recursion,

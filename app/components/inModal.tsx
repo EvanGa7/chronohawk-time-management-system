@@ -155,12 +155,10 @@ export function inModel({ isOpen, onClose, selectedDate}) {
     const today = new Date();
     const status = formData.statusof;
     const taskType = formData.tasktype;
-    const timeLeft = formData.time;
+    const timeLeft = formData.timeleft;
     const daysThoughtNeeded = parseFloat(formData.numdays);
     const freeTimePerDay = freeTimeData;
     const calculatedUrgency = prioritizeTasks(taskType, dueDate, today, status, freeTimePerDay, timeNeeded, daysThoughtNeeded, importance, timeLeft);
-
-    console.log("Calculated urgency:", calculatedUrgency);
 
     return calculatedUrgency;
   }
@@ -202,6 +200,7 @@ export function inModel({ isOpen, onClose, selectedDate}) {
     // Insert the new task into the 'tasks' table
     const session = await supabase.auth.getSession();
     if (session && session.data.session) {
+      
       const {data} = await supabase
         .from('tasks')
         .insert([{
