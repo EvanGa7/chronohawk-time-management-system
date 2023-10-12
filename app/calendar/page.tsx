@@ -50,27 +50,54 @@ export default function Calendar() {
     setFreeTimeByDay(freeTimeObj);
   }, [freeTime]);
 
-  const calculateTaskDuration = (taskDuration, startDate) => {
+  function getNextDateForDay(dayNum: number): Date {
+    const today = new Date();
+    const resultDate = new Date(today);
+    resultDate.setDate(today.getDate() + (dayNum + 7 - today.getDay()) % 7);
+    return resultDate;
+  }  
+
+  const freeTimeEvents = [];
+
+  freeTime.forEach(freeTimeEntry => {
+    const nextDate = getNextDateForDay(freeTimeEntry.dayoffree);
+    for (let i = 0; i < 52; i++) {  // Assuming you want to create events for 52 weeks
+      freeTimeEvents.push({
+        title: `Free Time: ${freeTimeEntry.minutesavailable} mins`,
+        start: new Date(nextDate),
+        end: new Date(nextDate),  // Assuming the free time spans the entire day
+        color: '#FF3352',
+        allDay: true,
+      });
+      nextDate.setDate(nextDate.getDate() + 7);  // Move to the same day of the next week
+    }
+  });
+
+  function calculateTaskDuration(taskDuration, startDate) {
     let remainingDuration = taskDuration;
     let currentDate = new Date(startDate);
-  
+    let endDate = new Date(startDate);
+
     while (remainingDuration > 0) {
-      const dayOfWeek = currentDate.getDay();
-      const availableTime = freeTimeByDay[dayOfWeek] || 0;
-  
-      if (availableTime >= remainingDuration) {
-        break;
-      }
-  
-      remainingDuration -= availableTime;
-      currentDate.setDate(currentDate.getDate() + 1);
+        const dayOfWeek = currentDate.getDay();
+        const availableTime = freeTimeByDay[dayOfWeek] || 0;
+
+        if (availableTime >= remainingDuration) {
+            endDate = new Date(currentDate);
+            endDate.setMinutes(endDate.getMinutes() + remainingDuration);
+            break;
+        } else {
+            remainingDuration -= availableTime;
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
     }
-  
+
     return {
-      start: startDate,
-      end: currentDate,
+        start: startDate,
+        end: endDate,
     };
-  };
+}
+
 
   const updateFreeTime = (taskDuration, startDate) => {
     let remainingDuration = taskDuration;
@@ -98,32 +125,32 @@ export default function Calendar() {
     // 1. Fetch existing tasks for the day
     const targetDate = new Date(taskData.date).toISOString().split('T')[0]; // Get YYYY-MM-DD format
     const { data: existingTasks, error } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('duedate', targetDate)
-      .eq('userid', userId);
-  
+        .from('tasks')
+        .select('*')
+        .eq('duedate', targetDate)
+        .eq('userid', userId);
+
     if (error) {
-      console.error("Error fetching tasks:", error.message);
-      return;
+        console.error("Error fetching tasks:", error.message);
+        return;
     }
-  
+
     // 2. Calculate total time for existing tasks
     const totalTimeForExistingTasks = existingTasks.reduce((sum, task) => sum + task.estimatedDuration, 0);
-  
+
     // 3. Check against free time
     const dayOfWeek = new Date(taskData.date).getDay();
     const availableFreeTime = freeTimeByDay[dayOfWeek] || 0;
-  
+
     if (totalTimeForExistingTasks + taskData.estimatedDuration > availableFreeTime) {
-      alert("You don't have enough free time on this day to update this task.");
-      return;
+        alert("You don't have enough free time on this day to update this task.");
+        return;
     }
-  
+
     const { start, end } = calculateTaskDuration(taskData.estimatedDuration, taskData.startDate);
     taskData.start = start;
     taskData.end = end;
-  
+
     updateFreeTime(taskData.estimatedDuration, taskData.startDate);
 
     // Check if the task already exists
@@ -132,13 +159,17 @@ export default function Calendar() {
     if (existingTask) {
         // Update the existing task
         const { error: updateError } = await supabase
-          .from('tasks')
-          .update(taskData)
-          .eq('id', taskData.id);
+            .from('tasks')
+            .update({
+                ...taskData,
+                startdate: taskData.start,  // Update the start date
+                enddate: taskData.end       // Update the end date
+            })
+            .eq('id', taskData.id);
 
         if (updateError) {
-          console.error("Error updating task:", updateError.message);
-          return;
+            console.error("Error updating task:", updateError.message);
+            return;
         }
 
         alert("Task updated successfully!");
@@ -146,6 +177,29 @@ export default function Calendar() {
         alert("Task does not exist. Cannot update.");
     }
 };
+
+
+function scheduleTasks(tasks, freeTimeByDay) {
+  const sortedTasks = [...tasks].sort((a, b) => a.priority - b.priority); // Sort tasks by priority
+
+  const scheduledTasks = [];
+  let currentDay = new Date();
+
+  for (const task of sortedTasks) {
+      const { start, end } = calculateTaskDuration(task.estimatedDuration, currentDay);
+      task.start = start;
+      task.end = end;
+
+      scheduledTasks.push(task);
+
+      updateFreeTime(task.estimatedDuration, start);
+      currentDay = new Date(end);
+      currentDay.setDate(currentDay.getDate() + 1); // Move to the next day after the end date of the last scheduled task
+  }
+
+  return scheduledTasks;
+}
+
 
 
   //check if signed in
@@ -219,8 +273,10 @@ export default function Calendar() {
           start: task.duedate,
           end: task.duedate, 
           eventHeight: 30,
-          taskid: task.taskid  // Include the taskid as a custom property
-        }));
+          taskid: task.taskid,  // Include the taskid as a custom property
+          color: '#EAC725'  // Set the color for the task
+      }));
+      
 
         setTasks(formattedTasks);
       } catch (error) {
@@ -232,6 +288,12 @@ export default function Calendar() {
       fetchTasks();
     }
   }, [userId]);
+
+  useEffect(() => {
+    const scheduledTasks = scheduleTasks(tasks, freeTimeByDay);
+    setTasks(scheduledTasks);
+  }, [tasks, freeTimeByDay]);
+  
 
   const handleDateSelect = (selectInfo) => {
     
@@ -268,8 +330,7 @@ export default function Calendar() {
                 center: 'title',
                 right: 'dayGridMonth,dayGridWeek',
               }}
-              events={tasks}
-              eventColor = '#EAC725'
+              events={[...freeTimeEvents, ...tasks]}
               eventTextColor = '#1F2937'
               eventContent={renderEventContent}
               eventClick={handleEventClick}
