@@ -15,6 +15,8 @@ const supabaseAnonKey: string = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+const MAX_EVENT_HEIGHT = 80;
+
 interface Task {
   title: string;
   duedate: Date;
@@ -76,6 +78,8 @@ export default function Calendar() {
       nextDate.setDate(nextDate.getDate() + 7);  // Move to the same day of the next week
     }
   });
+
+  
 
   function calculateTaskDuration(taskDuration, startDate, dueDate) {
     let remainingDuration = taskDuration;
@@ -213,16 +217,15 @@ export default function Calendar() {
         if (error) throw error;
 
         const formattedTasks = data.map(task => ({
-          title: task.taskname,
-          duedate: task.duedate,
-          start: task.startdate,
-          end: task.enddate, 
-          eventHeight: 30,
-          taskid: task.taskid,  // Include the taskid as a custom property
-          priorityof: task.piorityof,
-          estimatedtime: task.estimatedtime,
+            title: task.taskname,
+            duedate: task.duedate,
+            start: task.startdate,
+            end: task.enddate, 
+            eventHeight: Math.min(30,MAX_EVENT_HEIGHT),
+            taskid: task.taskid,
+            priorityof: task.piorityof,
+            estimatedtime: task.estimatedtime,
       }));
-      
 
         setTasks(formattedTasks);
         useEffect(() => {
@@ -245,11 +248,12 @@ export default function Calendar() {
 
   function renderEventContent(eventInfo) {
     const { event } = eventInfo;
-    const height = event.extendedProps.eventHeight || 'auto'; // Use the custom property
+    const height = event.extendedProps.eventHeight || 30;
   
     return (
       <div style={{ height: `${height}px`, overflow: 'hidden' }}>
         {event.title}
+        {event.estimatedtime}
       </div>
     );
   }
@@ -283,9 +287,6 @@ export default function Calendar() {
               select={handleDateSelect}
             />
           </div>
-          <button className="bg-buddha-500 hover:bg-buddha-200 text-buddha-950 py-2 px-4 rounded-full" onClick={updateTasksWithDates}>
-            Update Tasks
-          </button>
           <TaskModal 
             isOpen={isTaskModalOpen} 
               onClose={() => setIsTaskModalOpen(false)} 
@@ -298,6 +299,10 @@ export default function Calendar() {
             selectedDate={selectedDate}
           />
         </div>
+        <br />
+        <button className="bg-buddha-500 hover:bg-buddha-200 text-buddha-950 py-2 px-4 rounded-full" onClick={updateTasksWithDates}>
+            Update Tasks
+        </button>
       </main>
       <Taskmenu />
     </div>

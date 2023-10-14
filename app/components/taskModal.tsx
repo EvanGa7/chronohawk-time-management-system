@@ -150,7 +150,27 @@ export function taskModal({ isOpen, onClose, selectedTask, modalMode: initialMod
     retrievedFreeTime();
   }, []);
 
-  const handlePriority = () => {
+  const calculateNumDays = () => {
+    //calculate the number of days needed to complete using the estimated time and the free time
+    const estimatedTime = parseFloat(formData.estimatedtime);
+    const freeTimePerDay = freeTimeData;
+    let numDays = 0;
+    let timeLeft = estimatedTime;
+    let day = 0;
+    while (timeLeft > 0) {
+      if (day > 6) {
+        day = 0;
+      }
+      if (freeTimePerDay[day].minutesavailable > 0) {
+        timeLeft -= freeTimePerDay[day].minutesavailable;
+        numDays++;
+      }
+      day++;
+    }
+    return numDays;
+  }
+
+  const handlePriority = (numdays) => {
     const importance = parseFloat(formData.importance);
     const timeNeeded = parseFloat(formData.estimatedtime);
     const dueDate = new Date(formData.duedate);
@@ -158,7 +178,7 @@ export function taskModal({ isOpen, onClose, selectedTask, modalMode: initialMod
     const status = formData.statusof;
     const taskType = formData.tasktype;
     const timeLeft = formData.timeleft;
-    const daysThoughtNeeded = parseFloat(formData.numdays);
+    const daysThoughtNeeded = numdays;
     const freeTimePerDay = freeTimeData;
     const calculatedUrgency = prioritizeTasks(taskType, dueDate, today, status, freeTimePerDay, timeNeeded, daysThoughtNeeded, importance, timeLeft);
 
@@ -223,7 +243,7 @@ export function taskModal({ isOpen, onClose, selectedTask, modalMode: initialMod
     timeleft: '',
     priorityof: '0',
     statusof: 'Not Started',
-    numdays: '',
+    numdays: 0,
     recursion: false,
     frequencycycle: '',
     repetitioncycle: '',
@@ -292,7 +312,11 @@ export function taskModal({ isOpen, onClose, selectedTask, modalMode: initialMod
 
   const saveEditedTask = async () => {
 
-    let urgency = handlePriority();
+    // Calculate the number of days needed to complete the task
+    const numDays = calculateNumDays();
+
+    // Calculate the priority of the task
+    const urgency = handlePriority(numDays);
 
     const { error } = await supabase
       .from('tasks')
@@ -303,7 +327,7 @@ export function taskModal({ isOpen, onClose, selectedTask, modalMode: initialMod
         estimatedtime: formData.estimatedtime,
         priorityof: urgency,
         statusof: formData.statusof,
-        numdays: formData.numdays,
+        numdays: numDays,
         recursion: formData.recursion,
         importance: formData.importance
       })
@@ -486,10 +510,6 @@ export function taskModal({ isOpen, onClose, selectedTask, modalMode: initialMod
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Estimated Time:</label>
                         <input className="border p-2 rounded w-full" type="number" value={formData.estimatedtime} onChange={e => handleInputChange('estimatedtime', e.target.value)} />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Number of Days:</label>
-                        <input className="border p-2 rounded w-full" type="number" value={formData.numdays} onChange={e => handleInputChange('numdays', e.target.value)} />
                     </div>
                     <div className="mb-4 ">
                       <label className="block text-sm font-medium text-buddha-950">

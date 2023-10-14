@@ -148,7 +148,27 @@ export function inModel({ isOpen, onClose, selectedDate}) {
     retrievedFreeTime();
   }, []);
 
-  const handlePriority = () => {
+  const calculateNumDays = () => {
+    //calculate the number of days needed to complete using the estimated time and the free time
+    const estimatedTime = parseFloat(formData.estimatedtime);
+    const freeTimePerDay = freeTimeData;
+    let numDays = 0;
+    let timeLeft = estimatedTime;
+    let day = 0;
+    while (timeLeft > 0) {
+      if (day > 6) {
+        day = 0;
+      }
+      if (freeTimePerDay[day].minutesavailable > 0) {
+        timeLeft -= freeTimePerDay[day].minutesavailable;
+        numDays++;
+      }
+      day++;
+    }
+    return numDays;
+  }
+
+  const handlePriority = (numdays) => {
     const importance = parseFloat(formData.importance);
     const timeNeeded = parseFloat(formData.estimatedtime);
     const dueDate = new Date(selectedDate);
@@ -156,7 +176,7 @@ export function inModel({ isOpen, onClose, selectedDate}) {
     const status = formData.statusof;
     const taskType = formData.tasktype;
     const timeLeft = formData.timeleft;
-    const daysThoughtNeeded = parseFloat(formData.numdays);
+    const daysThoughtNeeded = numdays;
     const freeTimePerDay = freeTimeData;
     const calculatedUrgency = prioritizeTasks(taskType, dueDate, today, status, freeTimePerDay, timeNeeded, daysThoughtNeeded, importance, timeLeft);
 
@@ -175,7 +195,7 @@ export function inModel({ isOpen, onClose, selectedDate}) {
     timeleft: '',
     priorityof: '0',
     statusof: 'Not Started',
-    numdays: '',
+    numdays: 0,
     recursion: false,
     frequencycycle: '',
     repetitioncycle: '',
@@ -195,7 +215,9 @@ export function inModel({ isOpen, onClose, selectedDate}) {
 
   const handleSubmit = async () => {
 
-    const urgency = handlePriority();
+    const numDays = calculateNumDays();
+
+    const urgency = handlePriority(numDays);
   
     // Insert the new task into the 'tasks' table
     const session = await supabase.auth.getSession();
@@ -212,7 +234,7 @@ export function inModel({ isOpen, onClose, selectedDate}) {
           timeleft: formData.estimatedtime,
           priorityof: urgency,
           statusof: formData.statusof,
-          numdays: formData.numdays,
+          numdays: numDays,
           recursion: formData.recursion,
           importance: formData.importance,
         }]);
@@ -232,7 +254,7 @@ export function inModel({ isOpen, onClose, selectedDate}) {
     .eq('timeleft', formData.estimatedtime)
     .eq('priorityof', urgency)
     .eq('statusof', formData.statusof)
-    .eq('numdays', formData.numdays)
+    .eq('numdays', numDays)
     .eq('recursion', formData.recursion)
     .single();
 
@@ -373,18 +395,6 @@ const handleTaskTypeChange = (selectedType: string) => {
                 name="estimatedtime"
                 className="mt-1 p-2 w-full border border-buddha-950 rounded-md"
                 placeholder="Enter Estimated Minutes Needed"
-                onChange={handleChange}
-                required
-                />
-                <label htmlFor="numdays" className="block text-sm font-medium text-buddha-950">
-                Number Of Days
-                </label>
-                <input 
-                type="number"
-                id="numdays"
-                name="numdays"
-                className="mt-1 p-2 w-full border border-buddha-950 rounded-md"
-                placeholder="Enter Estimated Days Needed"
                 onChange={handleChange}
                 required
                 />

@@ -129,7 +129,7 @@ const NewTask = () => {
     estimatedtime: '',
     importance: 0,
     priorityof: 0,
-    numdays: '',
+    numdays: 0,
     statusof: 'Not Started',
     recursion: false,
     frequencycycle: '',
@@ -177,7 +177,27 @@ const NewTask = () => {
     retrievedFreeTime();
   }, []);
 
-  const handlePriority = () => {
+  const calculateNumDays = () => {
+    //calculate the number of days needed to complete using the estimated time and the free time
+    const estimatedTime = parseFloat(formData.estimatedtime);
+    const freeTimePerDay = freeTimeData;
+    let numDays = 0;
+    let timeLeft = estimatedTime;
+    let day = 0;
+    while (timeLeft > 0) {
+      if (day > 6) {
+        day = 0;
+      }
+      if (freeTimePerDay[day].minutesavailable > 0) {
+        timeLeft -= freeTimePerDay[day].minutesavailable;
+        numDays++;
+      }
+      day++;
+    }
+    return numDays;
+  }
+
+  const handlePriority = (numdays) => {
     const importance = parseFloat(formData.importance);
     const timeNeeded = parseFloat(formData.estimatedtime);
     const dueDate = new Date(formData.duedate);
@@ -185,7 +205,7 @@ const NewTask = () => {
     const status = formData.statusof;
     const taskType = formData.tasktype;
     const timeLeft = 4;
-    const daysThoughtNeeded = parseFloat(formData.numdays);
+    const daysThoughtNeeded = numdays;
     const freeTimePerDay = freeTimeData;
     const calculatedUrgency = prioritizeTasks(taskType, dueDate, today, status, freeTimePerDay, timeNeeded, daysThoughtNeeded, importance, timeLeft);
 
@@ -194,11 +214,13 @@ const NewTask = () => {
     return calculatedUrgency;
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
 
+    // Calculate the number of days needed to complete the task
+    const numDays = calculateNumDays();
+    
     // Calculate the priority of the task
-    const urgency = handlePriority();
+    const urgency = handlePriority(numDays);
 
     // Insert the new task into the 'tasks' table
     const session = await supabase.auth.getSession();
@@ -214,7 +236,7 @@ const NewTask = () => {
           timeleft: formData.estimatedtime,
           priorityof: urgency,
           statusof: formData.statusof,
-          numdays: formData.numdays,
+          numdays: numDays,
           recursion: formData.recursion,
           importance: formData.importance,
         }]);
@@ -234,7 +256,7 @@ const NewTask = () => {
     .eq('timeleft', formData.estimatedtime)
     .eq('priorityof', urgency)
     .eq('statusof', formData.statusof)
-    .eq('numdays', formData.numdays)
+    .eq('numdays', numDays)
     .eq('recursion', formData.recursion)
     .eq('importance', formData.importance)
     .single();
@@ -385,20 +407,6 @@ const NewTask = () => {
             />
           </div>
           <div className="mb-4">
-            <label htmlFor="numdays" className="block text-sm font-medium text-buddha-200">
-              Number Of Days
-            </label>
-            <input 
-              type="number"
-              id="numdays"
-              name="numdays"
-              className="mt-1 p-2 w-full border border-buddha-950 rounded-md"
-              placeholder="Enter Estimated Days Needed"
-              onChange={handleChange}
-              required
-            />
-          </div>
-          <div className="mb-4">
               <label className="block text-sm font-medium text-buddha-200">
                   Task Importance
               </label>
@@ -470,12 +478,9 @@ const NewTask = () => {
             </>
           )}
           <div className="flex justify-end">
-            <button
-              type="submit"
-              className="bg-buddha-500 text-buddha-950 py-2 px-4 rounded"
-            >
+            <Button className="bg-buddha-500 text-buddha-950" onPress={handleSubmit}>
               Create Task
-            </button>
+            </Button>
           </div>
         </form>
       </div>
