@@ -17,8 +17,12 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 interface Task {
   title: string;
+  duedate: Date;
   start: Date;
   end: Date;
+  priorityof: number;
+  estimatedtime: number;
+  taskid: string;
 }
 
 export default function Calendar() {
@@ -73,23 +77,30 @@ export default function Calendar() {
     }
   });
 
-  function calculateTaskDuration(taskDuration, startDate) {
+  function calculateTaskDuration(taskDuration, startDate, dueDate) {
     let remainingDuration = taskDuration;
     let currentDate = new Date(startDate);
     let endDate = new Date(startDate);
 
     while (remainingDuration > 0) {
         const dayOfWeek = currentDate.getDay();
-        const availableTime = freeTimeByDay[dayOfWeek] || 0;
+        const availableTime = freeTimeByDay[dayOfWeek];
+
+        // Check if the current date exceeds the due date
+        if (dueDate && currentDate > dueDate) {
+            console.error("Task cannot be scheduled within the due date!");
+            return null; // or handle this case as you see fit
+        }
 
         if (availableTime >= remainingDuration) {
-            endDate = new Date(currentDate);
-            endDate.setMinutes(endDate.getMinutes() + remainingDuration);
-            break;
+          endDate.setMinutes(endDate.getMinutes() + remainingDuration);
+          remainingDuration = 0;
         } else {
+            endDate.setMinutes(23, 59); // Set to end of day
             remainingDuration -= availableTime;
             currentDate.setDate(currentDate.getDate() + 1);
-        }
+            endDate = new Date(currentDate);
+        }      
     }
 
     return {
@@ -98,109 +109,42 @@ export default function Calendar() {
     };
 }
 
+  async function updateTasksWithDates() {
+    // Sort tasks based on priority
+    const sortedTasks = [...tasks].sort((a, b) => b.priorityof - a.priorityof);
 
-  const updateFreeTime = (taskDuration, startDate) => {
-    let remainingDuration = taskDuration;
-    let currentDate = new Date(startDate);
-    const updatedFreeTime = { ...freeTimeByDay };
-  
-    while (remainingDuration > 0) {
-      const dayOfWeek = currentDate.getDay();
-      const availableTime = updatedFreeTime[dayOfWeek] || 0;
-  
-      if (availableTime >= remainingDuration) {
-        updatedFreeTime[dayOfWeek] -= remainingDuration;
-        break;
+    let currentDate = new Date(); // Start scheduling from today
+
+    // For each task, calculate its start and end dates
+    for (const task of sortedTasks) {
+      const { start, end } = calculateTaskDuration(task.estimatedtime, currentDate, task.duedate);
+      
+      if (!start || !end) {
+        console.error("Couldn't schedule task:", task);
+        continue; // Skip this task if it couldn't be scheduled
       }
-  
-      updatedFreeTime[dayOfWeek] = 0;
-      remainingDuration -= availableTime;
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-  
-    setFreeTimeByDay(updatedFreeTime);
-  };
 
-  const updateTask = async (taskData) => {
-    // 1. Fetch existing tasks for the day
-    const targetDate = new Date(taskData.date).toISOString().split('T')[0]; // Get YYYY-MM-DD format
-    const { data: existingTasks, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .eq('duedate', targetDate)
-        .eq('userid', userId);
-
-    if (error) {
-        console.error("Error fetching tasks:", error.message);
-        return;
-    }
-
-    // 2. Calculate total time for existing tasks
-    const totalTimeForExistingTasks = existingTasks.reduce((sum, task) => sum + task.estimatedDuration, 0);
-
-    // 3. Check against free time
-    const dayOfWeek = new Date(taskData.date).getDay();
-    const availableFreeTime = freeTimeByDay[dayOfWeek] || 0;
-
-    if (totalTimeForExistingTasks + taskData.estimatedDuration > availableFreeTime) {
-        alert("You don't have enough free time on this day to update this task.");
-        return;
-    }
-
-    const { start, end } = calculateTaskDuration(taskData.estimatedDuration, taskData.startDate);
-    taskData.start = start;
-    taskData.end = end;
-
-    updateFreeTime(taskData.estimatedDuration, taskData.startDate);
-
-    // Check if the task already exists
-    const existingTask = existingTasks.find(t => t.id === taskData.id);
-
-    if (existingTask) {
-        // Update the existing task
-        const { error: updateError } = await supabase
-            .from('tasks')
-            .update({
-                ...taskData,
-                startdate: taskData.start,  // Update the start date
-                enddate: taskData.end       // Update the end date
-            })
-            .eq('id', taskData.id);
-
-        if (updateError) {
-            console.error("Error updating task:", updateError.message);
-            return;
-        }
-
-        alert("Task updated successfully!");
-    } else {
-        alert("Task does not exist. Cannot update.");
-    }
-};
-
-
-function scheduleTasks(tasks, freeTimeByDay) {
-  const sortedTasks = [...tasks].sort((a, b) => a.priority - b.priority); // Sort tasks by priority
-
-  const scheduledTasks = [];
-  let currentDay = new Date();
-
-  for (const task of sortedTasks) {
-      const { start, end } = calculateTaskDuration(task.estimatedDuration, currentDay);
       task.start = start;
       task.end = end;
 
-      scheduledTasks.push(task);
+      currentDate = new Date(end); // Update the currentDate to the end date of the last scheduled task
+      currentDate.setDate(currentDate.getDate() + 1); // Move to the next day
 
-      updateFreeTime(task.estimatedDuration, start);
-      currentDay = new Date(end);
-      currentDay.setDate(currentDay.getDate() + 1); // Move to the next day after the end date of the last scheduled task
+      // Update the task in the database
+      const { error } = await supabase
+        .from('tasks')
+        .update({
+          startdate: task.start,
+          enddate: task.end
+        })
+        .eq('taskid', task.taskid);
+
+      if (error) {
+        console.error("Error updating task:", error.message);
+      }
+    }
+    window.location.reload();
   }
-
-  return scheduledTasks;
-}
-
-
 
   //check if signed in
   useEffect(() => {
@@ -270,15 +214,20 @@ function scheduleTasks(tasks, freeTimeByDay) {
 
         const formattedTasks = data.map(task => ({
           title: task.taskname,
-          start: task.duedate,
-          end: task.duedate, 
+          duedate: task.duedate,
+          start: task.startdate,
+          end: task.enddate, 
           eventHeight: 30,
           taskid: task.taskid,  // Include the taskid as a custom property
-          color: '#EAC725'  // Set the color for the task
+          priorityof: task.piorityof,
+          estimatedtime: task.estimatedtime,
       }));
       
 
         setTasks(formattedTasks);
+        useEffect(() => {
+          updateTasksWithDates();
+        }, [tasks, freeTimeByDay]);
       } catch (error) {
         console.error("Error fetching tasks:", error.message);
       }
@@ -289,14 +238,7 @@ function scheduleTasks(tasks, freeTimeByDay) {
     }
   }, [userId]);
 
-  useEffect(() => {
-    const scheduledTasks = scheduleTasks(tasks, freeTimeByDay);
-    setTasks(scheduledTasks);
-  }, [tasks, freeTimeByDay]);
-  
-
-  const handleDateSelect = (selectInfo) => {
-    
+  const handleDateSelect = (selectInfo: any) => {
     setSelectedDate(selectInfo.start);
     setIsModalOpen(true);
   };
@@ -331,7 +273,6 @@ function scheduleTasks(tasks, freeTimeByDay) {
                 right: 'dayGridMonth,dayGridWeek',
               }}
               events={[...freeTimeEvents, ...tasks]}
-              eventTextColor = '#1F2937'
               eventContent={renderEventContent}
               eventClick={handleEventClick}
               initialView="dayGridMonth"
@@ -342,6 +283,9 @@ function scheduleTasks(tasks, freeTimeByDay) {
               select={handleDateSelect}
             />
           </div>
+          <button className="bg-buddha-500 hover:bg-buddha-200 text-buddha-950 py-2 px-4 rounded-full" onClick={updateTasksWithDates}>
+            Update Tasks
+          </button>
           <TaskModal 
             isOpen={isTaskModalOpen} 
               onClose={() => setIsTaskModalOpen(false)} 

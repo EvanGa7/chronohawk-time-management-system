@@ -13,7 +13,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 const columns = [
   {name: "TASKID", uid: "taskid"},
-  {name: "USERID", uid: "userid"},
   {name: "TASKNAME", uid: "taskname"},
   {name: "TASKTYPE", uid: "tasktype"},
   {name: "DUEDATE", uid: "duedate"},
@@ -23,6 +22,8 @@ const columns = [
   {name: "STATUS", uid: "statusof"},
   {name: "NUMDAYS", uid: "numdays"},
   {name: "RECURSION", uid: "recursion"},
+  {name: "STARTDATE", uid: "startdate"},
+  {name: "ENDDATE", uid: "enddate"},
   {name: "ACTIONS", uid: "actions"},
 ];
 
@@ -45,6 +46,8 @@ type Task = {
   statusof: string;
   numdays: number | null;
   recursion: boolean;
+  startdate: Date | null;
+  enddate: Date | null;
 };
 
 export default function taskMenu() {
@@ -103,6 +106,8 @@ export default function taskMenu() {
                 statusof: task.statusof,
                 numdays: task.numdays,
                 recursion: task.recursion,
+                startdate: task.startdate,
+                enddate: task.enddate,
               }));
 
               tasksRef.current = tasksArray;
