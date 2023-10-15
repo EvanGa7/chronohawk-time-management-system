@@ -47,3 +47,20 @@
     url('./components/images/back3.png') center center / cover no-repeat;
   z-index: -1;
 }
+
+.fc-daygrid-day {
+  @apply h-[350px];
+}
+
+.fc-daygrid-day-frame {
+  @apply h-full;
+}
+
+.fc-event {
+  @apply h-[75px] text-base text-default-foreground;
+}
+
+.calendar-container {
+  @apply h-[290vh];
+  background-color: transparent;
+}
