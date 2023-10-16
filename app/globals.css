@@ -61,6 +61,10 @@
 }
 
 .calendar-container {
-  @apply h-[290vh];
-  background-color: transparent;
+  height: full; /* adjust based on your needs */
+  overflow: hidden; /* hides any overflowing content */
+}
+
+.fc-col-header-cell {
+  background-color: black;
 }
