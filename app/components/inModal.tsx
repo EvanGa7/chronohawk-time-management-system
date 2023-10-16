@@ -411,7 +411,7 @@ const handleTaskTypeChange = (selectedType: string) => {
                           <DropdownItem key="importance1" onClick={() => handleImportanceChange('Low Importance', 0.25)}>Low Importance</DropdownItem>
                           <DropdownItem key="importance2" onClick={() => handleImportanceChange('Medium Importance', 0.5)}>Medium Importance</DropdownItem>
                           <DropdownItem key="importance3" onClick={() => handleImportanceChange('High Importance', 0.75)}>High Importance</DropdownItem>
-                          <DropdownItem key="importance4" onClick={() => handleImportanceChange('ASAP', 1)}>ASAP</DropdownItem>
+                          <DropdownItem key="importance4" onClick={() => handleImportanceChange('ASAP', 1)}>Critical Importance</DropdownItem>
                       </DropdownMenu>
                   </Dropdown>
                 <label htmlFor="recursion" className="block text-sm font-medium text-buddha-950">

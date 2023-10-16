@@ -143,7 +143,8 @@ async function updateTasksWithDates() {
 
   let currentDate = new Date(); // Start scheduling from today
 
-  for (let i = 0; i < sortedTasks.length; i++) {
+  let i = 0;
+  while (i < sortedTasks.length) {
       const task = sortedTasks[i];
       const result = calculateTaskDuration(task.estimatedtime, currentDate, task.duedate, task.numdays);
       
@@ -158,7 +159,7 @@ async function updateTasksWithDates() {
       task.end = end;
 
       // Handle recursion
-      if (task.recursion && task.recursionDetails) {
+      if (task.recursion && task.recursionDetails ) {
         const { cyclestartdate, repetitioncycle, frequencycycle } = task.recursionDetails;
         let recursionDate = new Date(cyclestartdate);
         const recursionEndDate = new Date(cyclestartdate);
@@ -236,6 +237,8 @@ async function updateTasksWithDates() {
           recursionDate.setDate(recursionDate.getDate() + frequencycycle);
       }}
 
+      else{
+      // Handle non-recurring tasks
       // Update the currentDate to the end date of the last scheduled task
       currentDate = new Date(end);
 
@@ -247,14 +250,16 @@ async function updateTasksWithDates() {
       
       // If the next task can fit into the remaining time, schedule it on the same day
       if (i + 1 < sortedTasks.length && sortedTasks[i + 1].estimatedtime <= remainingTime) {
-          i++; // Move to the next task
-          const nextTask = sortedTasks[i];
-          nextTask.start = currentDate;
-          nextTask.end = new Date(currentDate.getTime() + nextTask.estimatedtime * 60 * 1000);
+        i++; // Move to the next task
+        const nextTask = sortedTasks[i];
+        nextTask.start = currentDate;
+        nextTask.end = new Date(currentDate.getTime() + nextTask.estimatedtime * 60 * 1000);
       } else {
           currentDate.setDate(currentDate.getDate() + 1); // Move to the next day
+          i++;
       }
 
+      console.log("Task:", task);
       // Update the task in the database
       const { error } = await supabase
           .from('tasks')
@@ -268,6 +273,7 @@ async function updateTasksWithDates() {
           console.error("Error updating task:", error.message);
       }
   }
+}
   window.location.reload();
 }
 
@@ -413,6 +419,7 @@ async function updateTasksWithDates() {
         });
         
         setTasks(formattedTasks);
+
       } catch (error) {
         console.error("Error fetching tasks:", error.message);
       }
