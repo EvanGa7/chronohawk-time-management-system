@@ -61,15 +61,6 @@ export default function Calendar() {
   }]
   );
 
-  const [recursion, setRecursion] = useState([{
-    recursionid: '',
-    taskid: '',
-    recursionstartdate: '',
-    frequencycycle: 0,
-    repetitioncycle: 0,
-  }]
-  );
-
   const [freeTimeByDay, setFreeTimeByDay] = useState({});
 
   useEffect(() => {
@@ -95,10 +86,10 @@ export default function Calendar() {
       freeTimeEvents.push({
         title: `Free Time: ${freeTimeEntry.minutesavailable} mins`,
         start: new Date(nextDate),
-        end: new Date(nextDate),  // Assuming the free time spans the entire day
-        color: '#FF3352',
+        end: new Date(nextDate),
+        color: '#FF3352',  // Ensure this line is present and correct
         allDay: true,
-      });
+      });      
       nextDate.setDate(nextDate.getDate() + 7);  // Move to the same day of the next week
     }
   });
@@ -171,42 +162,82 @@ async function updateTasksWithDates() {
         let recursionDate = new Date(cyclestartdate);
         const recursionEndDate = new Date(cyclestartdate);
         recursionEndDate.setDate(recursionEndDate.getDate() + repetitioncycle - 1); // Subtracting 1 to include the start date in the cycle
-
         while (recursionDate <= recursionEndDate) {
           // Schedule the recurring task
           const recurringTask = { ...task, start: recursionDate, duedate: new Date(recursionDate) };
           const recurringResult = calculateTaskDuration(recurringTask.estimatedtime, recursionDate, recurringTask.duedate, recurringTask.numdays);      
-
+      
           if (recurringResult) {
-            // Insert a new task in the database for the recurrence
-            const { error } = await supabase
-              .from('tasks')
-              .insert({
-                userid: userId,
-                tasktype: recurringTask.tasktype,
-                priorityof: recurringTask.priorityof,
-                estimatedtime: recurringTask.estimatedtime,
-                timeleft: recurringTask.timeleft,
-                importance: recurringTask.importance,
-                numdays: recurringTask.numdays,
-                statusof: recurringTask.statusof,
-                duedate: recurringTask.duedate,
-                recursion: recurringTask.recursion,
-                taskname: recurringTask.title,
-                startdate: recurringResult.start,
-                enddate: recurringResult.end
-              });
+            // Generate a unique identifier for the recurring task
+            const recurringTaskId = `${task.taskid}-${recursionDate.toISOString()}`;
+            console.log(`Generated recurringTaskId: ${recurringTaskId}`);
 
-              if (error) {
-                console.error("Error inserting recurring task:", error.message);
+            // Check if the recurring task already exists using the unique identifier
+            const { data, error: fetchError } = await supabase
+                .from('tasks')
+                .select('taskid')
+                .eq('recurringTaskId', recurringTaskId);
+
+            if (fetchError) {
+                console.error("Error fetching recurring task:", fetchError.message);
+            }
+      
+              if (data && data.length > 0) {
+                console.log(`Task with recurringTaskId ${recurringTaskId} exists. Updating...`);
+                  // Task exists, so update it
+                  const { error: updateError } = await supabase
+                      .from('tasks')
+                      .update({
+                        taskname: recurringTask.title,
+                        duedate: recurringTask.duedate,
+                        userid: userId,
+                        priorityof: recurringTask.priorityof,
+                        estimatedtime: recurringTask.estimatedtime,
+                        tasktype: recurringTask.tasktype,
+                        numdays: recurringTask.numdays,
+                        importance: recurringTask.importance,
+                        statusof: recurringTask.statusof,
+                        timeleft: recurringTask.timeleft,
+                        recursion: recurringTask.recursion,
+                        startdate: recurringResult.start,
+                        enddate: recurringResult.end
+                      })
+                      .eq('taskid', data[0].taskid);
+      
+                  if (updateError) {
+                      console.error("Error updating recurring task:", updateError.message);
+                  }
+              } else {
+                console.log(`Task with recurringTaskId ${recurringTaskId} does not exist. Inserting...`);
+                  // Task doesn't exist, so insert it
+                  const { error: insertError } = await supabase
+                      .from('tasks')
+                      .insert({
+                          taskname: recurringTask.title,
+                          startdate: recurringResult.start,
+                          enddate: recurringResult.end,
+                          duedate: recurringTask.duedate,
+                          userid: userId,
+                          priorityof: recurringTask.priorityof,
+                          estimatedtime: recurringTask.estimatedtime,
+                          tasktype: recurringTask.tasktype,
+                          numdays: recurringTask.numdays,
+                          importance: recurringTask.importance,
+                          statusof: recurringTask.statusof,
+                          timeleft: recurringTask.timeleft,
+                          recursion: recurringTask.recursion,
+                          recurringtaskid: recurringTaskId,
+                      });
+      
+                  if (insertError) {
+                      console.error("Error inserting recurring task:", insertError.message);
+                  }
               }
           }
-
+      
           // Move to the next recursion date
           recursionDate.setDate(recursionDate.getDate() + frequencycycle);
-        }
-      }
-
+      }}
 
       // Update the currentDate to the end date of the last scheduled task
       currentDate = new Date(end);
@@ -243,25 +274,35 @@ async function updateTasksWithDates() {
   window.location.reload();
 }
 
-function getTimeDetails(task) {
-  const start = new Date(task.start);
-  const end = new Date(task.end);
-  const dayOfWeek = start.getDay();
-  const availableTime = freeTimeByDay[dayOfWeek] || 0;
-  const timeUsed = (end.getHours() * 60 + end.getMinutes()) - (start.getHours() * 60 + start.getMinutes());
-  const remainingTime = availableTime - timeUsed;
+// function getTimeDetails(task) {
+//   const start = new Date(task.start);
+//   const end = new Date(task.end);
 
-  return {
-      timeUsed,
-      remainingTime
-  };
-}
+//   // Calculate the difference in days between start and end dates
+//   const diffInDays = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1; // +1 to include the start day
+
+//   // Calculate time used based on the estimated time per day and the number of days
+//   const timeUsed = (task.estimatedtime / task.numdays) * diffInDays;
+
+//   // Logging for debugging
+//   console.log("Start Date:", start);
+//   console.log("End Date:", end);
+//   console.log("Estimated Time:", task.estimatedtime);
+//   console.log("Number of Days:", task.numdays);
+//   console.log("Difference in Days:", diffInDays);
+//   console.log("Calculated Time Used:", timeUsed);
+
+//   return {
+//       timeUsed,
+//   };
+// }
+
 
   function getColorForTaskType(taskType: number) {
     switch (taskType) {
       case 1: return 'red';
       case 2: return 'orange';
-      case 3: return 'yellow';
+      case 3: return '#FFD700'; // gold
       case 4: return 'green';
       case 5: return 'blue';
       case 6: return 'indigo';
@@ -270,7 +311,7 @@ function getTimeDetails(task) {
       case 9: return '#ADD8E6'; // lightblue
       case 10: return '#90EE90'; // lightgreen
       case 11: return '#D8BFD8'; // thistle (a light purple)
-      default: return 'lightred';  // Default color
+      default: return 'gray';  // Default color
     }
 }
 
@@ -350,6 +391,7 @@ function getTimeDetails(task) {
           const taskRecursion = recursionData.find(r => r.taskid === task.taskid);
           const adjustedEndDate = new Date(task.enddate);
           adjustedEndDate.setDate(adjustedEndDate.getDate() + 1);
+
           const taskColor = getColorForTaskType(task.tasktype);
         
           return {
@@ -389,17 +431,15 @@ function getTimeDetails(task) {
   };
 
   function renderEventContent(eventInfo) {
-    const { event } = eventInfo;
-    const height = 50;
+      const { event } = eventInfo;
+      const height = 50;
 
-    const { timeUsed, remainingTime } = getTimeDetails(event);
-
-    return (
-        <div style={{ height: `${height}px`, overflow: 'hidden' }}>
-            <b>{event.title}</b>
-        </div>
-    );
-}
+      return (
+          <div style={{ height: `${height}px`, overflow: 'hidden' }}>
+              <span style={{ color: 'white' }}>{event.title}</span>
+          </div>
+      );
+  }
 
   const handleEventClick = (clickInfo) => {
     setSelectedTask(clickInfo.event.extendedProps.taskid);

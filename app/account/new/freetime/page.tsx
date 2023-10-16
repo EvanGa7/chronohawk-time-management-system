@@ -61,7 +61,6 @@ useEffect(() => {
     }));
   };
 
-  //function for submitting the frretime info to the database
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -76,14 +75,49 @@ useEffect(() => {
       userid: userId,
     }));
 
-    const { data, error } = await supabase.from('freetime').insert(entries);
-    if (error) {
-      alert(error.message);
-    } else {
-      alert('Free time entries added successfully');
-      router.push('/calendar');
-    }
-  };
+    for (const entry of entries) {
+      // Check if the entry already exists
+      const { data, error: fetchError } = await supabase
+        .from('freetime')
+        .select('freetimeid') 
+        .eq('dayoffree', entry.dayoffree)
+        .eq('userid', userId);
+    
+      if (fetchError) {
+        alert(fetchError.message);
+        return;
+      }
+    
+      if (data && data.length > 0) {
+        // Entry exists, so update it
+        const { error: updateError } = await supabase
+          .from('freetime')
+          .update({
+            minutesavailable: entry.minutesavailable
+          })
+          .eq('freetimeid', data[0].freetimeid);  // Corrected this line
+    
+        if (updateError) {
+          alert(updateError.message);
+          return;
+        }
+      } else {
+        // Entry doesn't exist, so insert it
+        const { error: insertError } = await supabase
+          .from('freetime')
+          .insert(entry);
+    
+        if (insertError) {
+          alert(insertError.message);
+          return;
+        }
+      }
+    }    
+
+    alert('Free time entries processed successfully');
+    router.push('/calendar');
+};
+
   
   return (
     <div className='main-bg relative min-h-screen text-buddha-200'>
