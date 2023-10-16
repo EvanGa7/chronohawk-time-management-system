@@ -32,6 +32,7 @@ interface Task {
   importance: number;
   statusof: string;
   timeleft: number;
+  isrecurringadded: boolean;
 }
 
 interface Recursion {
@@ -168,22 +169,8 @@ async function updateTasksWithDates() {
           const recurringResult = calculateTaskDuration(recurringTask.estimatedtime, recursionDate, recurringTask.duedate, recurringTask.numdays);      
       
           if (recurringResult) {
-            // Generate a unique identifier for the recurring task
-            const recurringTaskId = `${task.taskid}-${recursionDate.toISOString()}`;
-            console.log(`Generated recurringTaskId: ${recurringTaskId}`);
-
-            // Check if the recurring task already exists using the unique identifier
-            const { data, error: fetchError } = await supabase
-                .from('tasks')
-                .select('taskid')
-                .eq('recurringTaskId', recurringTaskId);
-
-            if (fetchError) {
-                console.error("Error fetching recurring task:", fetchError.message);
-            }
       
-              if (data && data.length > 0) {
-                console.log(`Task with recurringTaskId ${recurringTaskId} exists. Updating...`);
+              if (recurringTask.isrecurringadded == true) {
                   // Task exists, so update it
                   const { error: updateError } = await supabase
                       .from('tasks')
@@ -202,13 +189,23 @@ async function updateTasksWithDates() {
                         startdate: recurringResult.start,
                         enddate: recurringResult.end
                       })
-                      .eq('taskid', data[0].taskid);
+                      .eq('taskid',recurringTask.taskid);
       
                   if (updateError) {
                       console.error("Error updating recurring task:", updateError.message);
                   }
               } else {
-                console.log(`Task with recurringTaskId ${recurringTaskId} does not exist. Inserting...`);
+                  const { error: updateError } = await supabase
+                  .from('tasks')
+                  .update({
+                    isrecurringadded: true
+                  })
+                  .eq('taskid',recurringTask.taskid);
+
+                  if (updateError) {
+                    console.error("Error updating recurring task:", updateError.message);
+                }
+      
                   // Task doesn't exist, so insert it
                   const { error: insertError } = await supabase
                       .from('tasks')
@@ -226,7 +223,7 @@ async function updateTasksWithDates() {
                           statusof: recurringTask.statusof,
                           timeleft: recurringTask.timeleft,
                           recursion: recurringTask.recursion,
-                          recurringtaskid: recurringTaskId,
+                          isrecurringadded: true
                       });
       
                   if (insertError) {
@@ -410,7 +407,8 @@ async function updateTasksWithDates() {
             importance: task.importance,
             color: taskColor,
             recursion: task.recursion,
-            recursionDetails: taskRecursion || undefined
+            recursionDetails: taskRecursion || undefined,
+            isrecurringadded: task.isrecurringadded
           };
         });
         
