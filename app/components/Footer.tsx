@@ -7,6 +7,8 @@ export function Footer() {
         <div className="flex justify-center items-center">
           <p>&copy; {new Date().getFullYear()} ChronoHawk</p>
         </div>
+        <br />
+        <p className="flex justify-center items-center">🔥 Developed By Evan Gardner & Daniel lawrie 🔥</p>
       </div>
     </footer>
   );
